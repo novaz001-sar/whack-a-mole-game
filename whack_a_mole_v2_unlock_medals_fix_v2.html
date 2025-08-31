@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>农田打地鼠 | Whack-a-Mole</title>
+  <style>
+    :root{
+      --bg1-start:#e8f7e0; --bg1-end:#bde6a1;     /* 1-5 清晨 */
+      --bg2-start:#fff3c4; --bg2-end:#ffd47e;     /* 6-10 午后 */
+      --bg3-start:#ffd5b4; --bg3-end:#ff9b6a;     /* 11-15 黄昏 */
+      --bg4-start:#1a2740; --bg4-end:#0b1326;     /* 16-20 夜晚 */
+      --accent:#2a7a3b; --panel:#ffffff; --text:#102a13;
+      --shadow:0 8px 30px rgba(0,0,0,.15);
+      --radius:16px; --radius-lg:20px;
+      --mole-w: 90px; --mole-scale: 1.0;
+    }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'PingFang SC','Microsoft Yahei',sans-serif;color:var(--text);transition:color .2s ease, background .2s ease;}
+    body.bg1{background:linear-gradient(180deg,var(--bg1-start),var(--bg1-end));}
+    body.bg2{background:linear-gradient(180deg,var(--bg2-start),var(--bg2-end));}
+    body.bg3{background:linear-gradient(180deg,var(--bg3-start),var(--bg3-end));}
+    body.bg4{background:linear-gradient(180deg,var(--bg4-start),var(--bg4-end));}
+    body.custom-bg{background-size:cover;background-position:center center; background-attachment: fixed;}
+
+    #hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:8px}
+    .badge{background:var(--panel);padding:8px 12px;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .badge strong{font-size:18px}
+
+    /* ===== UI modes ===== */
+    body.ui-light{color:#102a13}
+    body.ui-light .badge{background:#ffffff;color:#102a13;border:1px solid rgba(0,0,0,.08)}
+    body.ui-light #footerBar{background:rgba(255,255,255,.7);color:#102a13}
+    body.ui-light .panel{background:#ffffff;color:#102a13;border:1px solid rgba(0,0,0,.08)}
+    body.ui-light .tabs .btn{background:#f7faf8;border-color:#cfe3d3;color:#102a13}
+    body.ui-light .tabs .btn.active{background:#e6f5ea;border-color:#9fd0a9}
+    body.ui-light .section .field input,
+    body.ui-light .section .field select,
+    body.ui-light .section .field textarea{background:#fff;color:#111;border:1px solid #ccc}
+    body.ui-light .preview-board{background:#f3f6f4;border-color:#d8e3da}
+    body.ui-light .value-pill{background:#eef6ef;border-color:#cfe3d3;color:#102a13}
+
+    body.ui-dark{color:#e9f0ea}
+    body.ui-dark .badge{background:rgba(255,255,255,.12); color:#e9f0ea; border:1px solid rgba(255,255,255,.2)}
+    body.ui-dark .badge .btn{background:rgba(255,255,255,.14); color:#e9f0ea; border:1px solid rgba(255,255,255,.25)}
+    body.ui-dark .badge .btn.primary{background:#2b8f4b; border-color:#2b8f4b; color:#fff}
+    body.ui-dark #footerBar{background:rgba(0,0,0,.45); color:#dfe9f5}
+    /* ENFORCE dark panel & inputs */
+    body.ui-dark .panel{background:#18212f !important; color:#e9f0ea !important; border:1px solid rgba(255,255,255,.12) !important}
+    body.ui-dark .tabs .btn{background:#223049 !important; border-color:#314362 !important; color:#e9f0ea !important}
+    body.ui-dark .tabs .btn.active{background:#2b3d5e !important; border-color:#4a6aa0 !important}
+    body.ui-dark .panel .field input,
+    body.ui-dark .panel .field select,
+    body.ui-dark .panel .field textarea{background:#0f1725 !important; color:#e9f0ea !important; border:1px solid #314362 !important; caret-color:#e9f0ea !important}
+    body.ui-dark .panel .field input::placeholder,
+    body.ui-dark .panel .field textarea::placeholder{ color:#aab6c6 !important }
+    body.ui-dark .preview-board{background:#0f1725 !important; border-color:#314362 !important}
+    body.ui-dark .value-pill{background:#223049 !important; border-color:#314362 !important; color:#dfe9f5 !important}
+
+    /* HUD glow/stroke in dark */
+    body.ui-dark #hud .badge strong{
+      text-shadow: 0 0 3px rgba(255,255,255,.65), 0 0 8px rgba(94,220,255,.35), 0 0 14px rgba(43,143,75,.4);
+      -webkit-text-stroke: 1px rgba(0,0,0,.45);
+      paint-order: stroke fill;
+    }
+
+    #board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:720px;margin:12px auto}
+    .hole{ position:relative;background:rgba(0,0,0,.08); border-radius:50%; aspect-ratio:1/1; box-shadow:inset 0 4px 10px rgba(0,0,0,.15); overflow:hidden; }
+
+    .mole{
+      position:absolute;left:50%;bottom:-120px;transform:translateX(-50%);
+      width: calc(var(--mole-w) * var(--mole-scale));
+      height: calc(var(--mole-w) * 1.22 * var(--mole-scale));
+      border-radius:
+        calc(var(--mole-w) * 0.8 * var(--mole-scale))
+        calc(var(--mole-w) * 0.8 * var(--mole-scale))
+        calc(var(--mole-w) * 0.22 * var(--mole-scale))
+        calc(var(--mole-w) * 0.22 * var(--mole-scale));
+      background:#6b4e16;
+      box-shadow:0 6px 10px rgba(0,0,0,.3);
+      display:flex;align-items:center;justify-content:center;
+      font-size: calc(var(--mole-w) * 0.6 * var(--mole-scale));
+      color:#fff;cursor:pointer; transition:bottom .18s ease-out;
+    }
+    .mole.show{bottom:10px}
+
+    #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:50}
+    #overlay.show{display:flex}
+    .panel{background:var(--panel);color:var(--text);width:min(1024px,94%);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)}
+
+    .tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+    .tabs .btn{padding:8px 12px;border-radius:10px;border:1px solid #cfe3d3;background:#f7faf8;cursor:pointer}
+    .tabs .btn.active{background:#e6f5ea;border-color:#9fd0a9}
+    .section{display:none}
+    .section.active{display:block}
+
+    .field{margin:6px 0;display:grid;grid-template-columns:240px 1fr;gap:8px;align-items:center}
+    /* default (light) */
+    .field input,.field select,.field textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:#fff;color:#111}
+
+    #footerBar{position:fixed;left:0;right:0;bottom:0;padding:6px;text-align:center;background:rgba(255,255,255,.7)}
+    .btn{font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid #cfd9cf;background:#fff;cursor:pointer}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+    #welcome{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg1-start),var(--bg1-end));z-index:60}
+    #welcome .card{background:#ffffffcc;backdrop-filter:blur(4px);padding:26px;border-radius:18px;box-shadow:var(--shadow);max-width:800px;width:92%;}
+    #welcome h1{margin:6px 0 8px 0;font-size:28px;text-align:center}
+    #welcome p{margin:0 0 14px 0;color:#333;text-align:center}
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .mode{border:1px solid #d9e6da;border-radius:14px;padding:14px;background:#fff;box-shadow:var(--shadow)}
+    .mode h3{margin:4px 0 6px 0}
+    .mode .desc{color:#444;line-height:1.6}
+    .mode .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+
+    .preview-wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .preview-board{width:180px;height:180px;display:grid;place-items:center;background:#f3f6f4;border-radius:14px;border:1px solid #d8e3da}
+    .preview-hole{width:120px;height:120px;border-radius:50%;background:rgba(0,0,0,.08);position:relative;overflow:hidden;box-shadow:inset 0 4px 10px rgba(0,0,0,.15)}
+    .preview-hole .mole{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);}
+    .value-pill{padding:4px 8px;border-radius:999px;background:#eef6ef;border:1px solid #cfe3d3;font-size:14px}
+
+    .pill{display:inline-block;padding:6px 10px;border:1px solid #cfe3d3;border-radius:999px;background:#f7faf8;margin:4px 6px;cursor:pointer;user-select:none}
+    .pill.locked{opacity:.55;cursor:not-allowed;border-style:dashed}
+    .pill.custom{border-color:#9fb9ff;background:#eef3ff}
+    .pill.active{outline:2px solid #2a7a3b; background:#e6f5ea}
+  
+/* ===================== Cute UI pack (v2) ===================== */
+/* Keep clipping to hide moles when underground */
+.hole.cute{
+  position: relative;
+  overflow: hidden; /* important: ensure underground mole not visible */
+  background: radial-gradient(ellipse at center, #2b1f12 0%, #2b1f12 36%, #1e160c 60%, #0e0904 100%);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 10px 18px rgba(0,0,0,.35),
+    inset 0 -6px 12px rgba(0,0,0,.4),
+    0 6px 18px rgba(0,0,0,.15);
+}
+.hole.cute::before{
+  /* grassy rim fully inside to avoid clipping */
+  content:"";
+  position:absolute; left:50%; top:16%;
+  transform:translate(-50%,-50%);
+  width: 86%; height: 42%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #8ccf7e 0%, #79be6d 55%, #4d8d46 100%);
+  filter: blur(0.2px);
+  z-index: 0;
+}
+.hole.cute::after{
+  /* inner shadow */
+  content:"";
+  position:absolute; left:50%; top:52%;
+  transform:translate(-50%,-50%);
+  width: 76%; height: 38%;
+  border-radius: 50%;
+  box-shadow: inset 0 12px 26px rgba(0,0,0,.55);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.65), rgba(0,0,0,.85));
+  z-index: 0;
+}
+
+.mole.cute{
+  /* Do NOT override bottom; keep original bottom:-120px from .mole */
+  background: linear-gradient(#8e6a49, #7b5437);
+  border: 3px solid #3a2a1c;
+  box-shadow: 0 6px 10px rgba(0,0,0,.35);
+  border-radius: 60% 60% 28% 28%;
+  display:flex; align-items:center; justify-content:center;
+  overflow: visible;
+  font-size: 0;
+}
+
+/* Gentle pop when showing (doesn't affect bottom) */
+.mole.cute.show{ animation: mole-pop 240ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes mole-pop{
+  0%{ transform: translateX(-50%) scale(.92); }
+  100%{ transform: translateX(-50%) scale(1); }
+}
+
+/* SVG size */
+.mole .mole-svg{ width: 86%; height: 86%; }
+
+/* Eye blink + whisker wiggle */
+.mole .eye{ transform-origin: center; animation: blink 5s infinite; }
+@keyframes blink{ 0%,2%,60%,62%,100%{ transform: scaleY(1);} 1%,61%{ transform: scaleY(0.1);} }
+.mole .whisk{ transform-origin: center; animation: whisk 3.5s ease-in-out infinite; }
+@keyframes whisk{ 0%,100%{ transform: rotate(0deg);} 50%{ transform: rotate(3deg);} }
+/* ============================================================ */
+
+
+/* High-contrast pills in dark UI */
+body.ui-dark .pill{background:#223049 !important;border-color:#314362 !important;color:#e9f0ea !important}
+body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !important;color:#ffffff !important;outline:2px solid #2a7a3b !important}
+body.ui-dark .pill.custom{border-color:#4a6aa0 !important;background:#2b3d5e !important;color:#ffffff !important}
+body.ui-dark .pill.locked{opacity:.7 !important;border-style:dashed !important;background:#1a253a !important;color:#8fa3c8 !important}
+
+
+/* ===================== Hi-Vis UI pack ===================== */
+/* Goal: maximize mole/hole discriminability (contrast, outline, shape) */
+.hole.hivis{
+  position: relative;
+  overflow: hidden; /* ensures underground mole is not visible */
+  border-radius: 50%;
+  /* Strongly dark interior */
+  background: radial-gradient(ellipse at center, #0e0b10 0%, #0b0a0c 48%, #050406 100%);
+  /* Distinct bright stone rim */
+  box-shadow:
+    0 0 0 6px #9fb2bd,          /* outer stone ring */
+    0 0 0 10px #5d707a,         /* outer darker ring */
+    inset 0 16px 22px rgba(0,0,0,.55);
+}
+/* Top rim highlight to separate mole from hole visually */
+.hole.hivis::after{
+  content:"";
+  position:absolute; left:50%; top:52%;
+  transform:translate(-50%,-50%);
+  width: 78%; height: 36%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,.10) 0%, rgba(0,0,0,.75) 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Mole: lighter warm palette with thick dark outline */
+.mole.hivis{
+  /* keep absolute/bottom from base .mole */
+  background: linear-gradient(#efb37e, #cc7f3f);
+  border: 4px solid #23150b; /* strong outline */
+  border-radius: 62% 62% 30% 30%;
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.85), /* subtle top highlight edge */
+    0 8px 14px rgba(0,0,0,.4);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 0;
+  z-index: 2; /* above hole rim highlight */
+}
+/* Gentle pop on show for visibility without disturbing bottom logic */
+.mole.hivis.show{ animation: hivis-pop 200ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes hivis-pop{
+  0%{ transform: translateX(-50%) scale(.95); }
+  100%{ transform: translateX(-50%) scale(1); }
+}
+
+/* Bigger SVG with clear outlines */
+.mole .mole-svg{ width: 92%; height: 92%; }
+.mole .eye-white{ fill:#ffffff; stroke:#23150b; stroke-width:3px; }
+.mole .pupil{ fill:#0a0a0a; }
+.mole .snout{ fill:#ffd4d4; stroke:#23150b; stroke-width:3.5px; }
+.mole .tooth{ fill:#ffffff; stroke:#23150b; stroke-width:2.5px; }
+.mole .stroke{ stroke:#23150b; stroke-width:5px; }
+.mole .belly{ fill:#f3c79d; }
+.mole .shine{ fill:rgba(255,255,255,.35); }
+
+/* Dark-mode menu pills contrast stays high */
+body.ui-dark .pill{background:#223049 !important;border-color:#314362 !important;color:#e9f0ea !important}
+body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !important;color:#ffffff !important;outline:2px solid #2a7a3b !important}
+/* ========================================================== */
+
+
+/* ===== Medals UI ===== */
+.medal-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px 0}
+.medal-icon{width:28px;height:28px;display:inline-block;vertical-align:middle}
+.medal-label{font-size:14px;opacity:.9}
+
+</style>
+</head>
+<body class="bg1 ui-light">
+  <div id="hud">
+    <div class="badge"><span data-i18n="modeLabel">模式</span>: <strong id="hudMode">挑战</strong></div>
+    <div class="badge"><span data-i18n="level">关卡</span> <strong id="hudLevel">1</strong></div>
+    <div class="badge"><span data-i18n="time">时间</span> <strong id="hudTime">60</strong>s</div>
+    <div class="badge"><span data-i18n="hits">命中</span> <strong id="hudHit">0</strong></div>
+    <div class="badge"><span data-i18n="miss">漏打</span> <strong id="hudMiss">0</strong></div>
+    <div class="badge"><span data-i18n="rate">命中率</span> <strong id="hudRate">0%</strong></div>
+    <div class="badge"><span data-i18n="medals">勋章</span> <strong id="hudMedals">0</strong></div>
+    <div class="badge"><button id="btnSound" class="btn">🔊</button></div>
+    <div class="badge"><button id="btnMenu" class="btn"><span data-i18n="menu">菜单</span> (ESC)</button></div>
+  </div>
+
+  <div id="board"></div>
+
+  <div id="welcome" aria-hidden="false">
+    <div class="card">
+      <h1>🌾 <span data-i18n="title">农田打地鼠 · 保护农地</span></h1>
+      <p data-i18n="welcomeTip">欢迎！请选择模式和语言，开始游戏。</p>
+      <div class="field" style="justify-items:center">
+        <label><strong data-i18n="language">语言</strong></label>
+        <select id="welcomeLang" style="max-width:260px">
+          <option value="zh">🇨🇳 简体中文</option>
+          <option value="en">🇬🇧 English</option>
+        </select>
+      </div>
+      <div class="mode-grid" style="margin-top:12px">
+        <div class="mode">
+          <h3>🎯 <span data-i18n="challenge">挑战模式</span></h3>
+          <div class="desc" data-i18n="challengeDesc">
+            依次闯关（1→20），通关后解锁下一关。通关 20 关后根据累计勋章授予荣誉称号。
+          </div>
+          <div class="actions">
+            <button id="btnStartChallenge" class="btn primary">🚀 <span data-i18n="startChallenge">开始挑战</span></button>
+          </div>
+        </div>
+        <div class="mode">
+          <h3>🆓 <span data-i18n="free">自由模式</span></h3>
+          <div class="desc" data-i18n="freeDesc">
+            任意选择任何关卡进行游玩（包括你自定义的新关卡）。
+          </div>
+          <div class="actions">
+            <button id="btnStartFree" class="btn">▶ <span data-i18n="startFree">进入自由模式</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" aria-hidden="true">
+    <div class="panel">
+      <h2 style="margin-top:0;margin-bottom:10px"><span data-i18n="menu">菜单</span></h2>
+      <div class="tabs">
+        <button class="btn active" data-tab="play">▶️ <span data-i18n="tabPlay">关卡/开始</span></button>
+        <button class="btn" data-tab="editor">🛠️ <span data-i18n="tabEditor">编辑器</span></button>
+        <button class="btn" data-tab="lang">🌐 <span data-i18n="tabLang">语言</span></button>
+        <span style="flex:1 1 auto"></span>
+        <button id="btnCloseMenu" class="btn" data-i18n="closeContinue">关闭（继续）</button>
+      </div>
+
+      <div class="section active" id="sec-play">
+        <div class="field">
+          <label data-i18n="currentMode">当前模式</label>
+          <select id="modeSelect">
+            <option value="challenge" data-i18n="challenge">挑战模式</option>
+            <option value="free" data-i18n="free">自由模式</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="selectLevel">选择关卡</label>
+          <div id="levelsPills"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="btnStartSelected" class="btn primary">▶ <span data-i18n="startSelected">开始所选关卡</span></button>
+          <button id="btnRestart" class="btn">↻ <span data-i18n="restartCurr">重新开始当前关</span></button>
+        </div>
+        <p style="margin-top:10px;line-height:1.6" data-i18n="pauseNote">
+          提示：打开菜单时游戏会暂停，关闭菜单后继续。按 ESC 可开关菜单。
+        </p>
+      </div>
+
+      <div class="section" id="sec-editor">
+        <div class="field"><label data-i18n="edSelect">选择关卡（编辑）</label>
+          <select id="edLevel"></select></div>
+        <div class="field"><label data-i18n="edDuration">每关时间（秒）</label><input id="edDuration" type="number" min="20" max="300" step="5"></div>
+        <div class="field"><label data-i18n="edTotal">地鼠总数（个）</label><input id="edTotal" type="number" min="10" max="500" step="1"></div>
+        <div class="field"><label data-i18n="edInterval">出现频率（ms/批）</label><input id="edInterval" type="number" min="200" max="3000" step="50"></div>
+        <div class="field"><label data-i18n="edUpTime">停留时间（ms）</label><input id="edUpTime" type="number" min="300" max="3000" step="50"></div>
+        <div class="field">
+  <label data-i18n="edConcurrent">同时出现数（只）</label>
+  <input id="edConcurrent" type="number" min="1" max="4" step="1">
+</div>
+<div class="field">
+  <label data-i18n="edHoles">洞口数量（9-16）</label>
+  <input id="edHoles" type="number" min="9" max="16" step="1">
+</div>
+        <div class="field">
+          <label data-i18n="edMoleSize">地鼠大小（%）</label>
+          <div class="preview-wrap">
+            <input id="edMoleScale" type="range" min="60" max="140" step="1" value="100" style="width:220px">
+            <span id="edMoleScaleVal" class="value-pill">100%</span>
+            <div class="preview-board">
+              <div id="previewBox" class="preview-hole" style="--mole-scale:1.0">
+                <div class="mole">🐭</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label data-i18n="edBgType">背景类型</label>
+          <select id="edBgType">
+            <option value="theme">主题（按组：清晨/午后/黄昏/夜晚）</option>
+            <option value="image">自定义图片</option>
+          </select>
+        </div>
+        <div class="field" id="bgThemeRow">
+          <label data-i18n="edBgTheme">主题背景（组）</label>
+          <select id="edBgTheme">
+            <option value="1">清晨</option>
+            <option value="2">午后</option>
+            <option value="3">黄昏</option>
+            <option value="4">夜晚</option>
+          </select>
+        </div>
+        <div class="field" id="bgImageRow" style="display:none">
+          <label data-i18n="edBgImage">上传背景图片</label>
+          <input id="edBgImage" type="file" accept="image/*">
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button id="btnSaveCfg" class="btn primary" data-i18n="saveCfg">保存设置</button>
+          <button id="btnLoadCfg" class="btn" data-i18n="loadDefault">载入该关默认</button>
+          <button id="btnCreateCustom" class="btn" title="Create a new custom level">➕ <span data-i18n="createCustom">创建新关卡（自由模式）</span></button>
+                  <button id="btnDeleteCustom" class="btn danger">🗑️ <span data-i18n="deleteCustom">删除自定义关卡</span></button>
+        </div>
+      </div>
+
+      <div class="section" id="sec-lang">
+        <div class="field">
+          <label data-i18n="language">语言</label>
+          <select id="menuLang">
+            <option value="zh">🇨🇳 简体中文</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+        </div>
+        <p data-i18n="langTip">选择语言会保存到本地。</p>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="endDialog" class="panel" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;max-width:92vw;z-index:9999">
+    <h2 style="margin-top:0;margin-bottom:10px" data-i18n="levelComplete">关卡完成</h2>
+    <div id="endStats" style="margin-bottom:12px;font-size:14px;line-height:1.6"></div>
+    <div id="medalRow" class="medal-row"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button id="btnNextLevel" class="btn primary">➡ <span data-i18n="nextLevel">下一关</span></button>
+      <button id="btnBackMenu" class="btn">☰ <span data-i18n="backMenu">返回菜单</span></button>
+    </div>
+  </div>
+
+
+  <div id="footerBar">🖱️ <span data-i18n="footer">点击地鼠获得分数。按 ESC 打开/关闭菜单。</span></div>
+
+<script>
+/* ========= i18n ========= */
+const I18N={
+  zh:{title:"农田打地鼠 · 保护农地",welcomeTip:"欢迎！请选择模式和语言，开始游戏。",startChallenge:"开始挑战", startFree:"进入自由模式",language:"语言", menu:"菜单",challenge:"挑战模式", free:"自由模式",challengeDesc:"依次闯关（1→20），通关后解锁下一关。通关 20 关后根据累计勋章授予荣誉称号。",freeDesc:"任意选择任何关卡进行游玩（包括你自定义的新关卡）。",tabPlay:"关卡/开始", tabEditor:"编辑器", tabLang:"语言",closeContinue:"关闭（继续）",currentMode:"当前模式", selectLevel:"选择关卡",startSelected:"开始所选关卡", restartCurr:"重新开始当前关",pauseNote:"提示：打开菜单时游戏会暂停，关闭菜单后继续。按 ESC 可开关菜单。",edSelect:"选择关卡（编辑）", edDuration:"每关时间（秒）", edTotal:"地鼠总数（个）",edInterval:"出现频率（ms/批）", edUpTime:"停留时间（ms）", edConcurrent:"同时出现数（只）",edHoles:"洞口数量（9-16）",edMoleSize:"地鼠大小（%）", edBgType:"背景类型", edBgTheme:"主题背景（组）", edBgImage:"上传背景图片",saveCfg:"保存设置", loadDefault:"载入该关默认", createCustom:"创建新关卡（自由模式）",level:"关卡", time:"时间", hits:"命中", miss:"漏打", rate:"命中率", medals:"勋章",footer:"点击地鼠获得分数。按 ESC 打开/关闭菜单。",modeLabel:"模式",honors:["园林学徒","园林标兵","园林卫士","园林皇家队长"]},
+  en:{title:"Whack-a-Mole · Protect the Farmland",welcomeTip:"Welcome! Pick a mode and language to begin.",startChallenge:"Start Challenge", startFree:"Enter Free Mode",language:"Language", menu:"Menu",challenge:"Challenge Mode", free:"Free Mode",challengeDesc:"Play levels 1→20 in order; beat a level to unlock the next. After level 20, receive a title based on total medals.",freeDesc:"Play any level freely (including your custom levels).",tabPlay:"Play/Levels", tabEditor:"Editor", tabLang:"Language",closeContinue:"Close (Resume)",currentMode:"Current Mode", selectLevel:"Select Level",startSelected:"Start Selected Level", restartCurr:"Restart Current",pauseNote:"Note: The game pauses while the menu is open and resumes when closed. Press ESC to toggle.",edSelect:"Select Level (Edit)", edDuration:"Duration (sec)", edTotal:"Total moles",edInterval:"Spawn interval (ms/batch)", edUpTime:"Mole up-time (ms)", edConcurrent:"Concurrent moles",edHoles:"Hole count (9–16)",edMoleSize:"Mole size (%)", edBgType:"Background Type", edBgTheme:"Theme Group", edBgImage:"Upload Background Image",saveCfg:"Save Settings", loadDefault:"Load Default", createCustom:"Create New Level (Free Mode)",level:"Level", time:"Time", hits:"Hits", miss:"Misses", rate:"Hit Rate", medals:"Medals",footer:"Click popping moles to score. Press ESC to open/close the menu.",modeLabel:"Mode",honors:["Apprentice","Model Player","Guardian","Royal Captain"]}
+};
+
+const storeKey='wam_senior_store_v2';
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(storeKey))||{} }catch{return {}} }
+function saveStore(obj){ try{ localStorage.setItem(storeKey, JSON.stringify(obj)); }catch{} }
+
+/* ========= Game State ========= */
+const LEVEL_COUNT=20; let CURRENT_HOLES=9;
+let state={lang:'zh',mode:'challenge',currentLevel:1,unlockedMax:1,medals:Array(LEVEL_COUNT).fill(0),levelConfigs:[],customLevels:[],running:false,paused:false,remainingTime:60,spawnCount:0,hits:0,activeMoles:new Set(),soundOn:true,levelTimer:null,spawnTimer:null};
+
+/* ========= Level Config ========= */
+function defaultMoleScaleForLevel(idx){ const min=0.75, max=1.0; return max - (idx-1)*((max-min)/(LEVEL_COUNT-1)); }
+function defaultConfigForLevel(idx){
+  const duration=60, totalMoles=25+idx*3, spawnInterval=Math.max(500,1200-idx*30), upTime=Math.max(600,1400-idx*40);
+  let concurrent=1; if(idx>=11){ concurrent=Math.min(4,1+Math.floor((idx-11)/3)); }
+  const moleScale=defaultMoleScaleForLevel(idx);
+  return{duration,totalMoles,spawnInterval,upTime,concurrent,moleScale,holes:9,bg:{type:'theme'}};
+}
+for(let i=1;i<=LEVEL_COUNT;i++){state.levelConfigs.push(defaultConfigForLevel(i));}
+
+/* Restore */
+(function restore(){
+  const s = loadStore();
+  if(s.lang) state.lang = s.lang;
+  if(s.mode) state.mode = s.mode;
+  if(Number.isInteger(s.unlockedMax)) state.unlockedMax = Math.max(1, Math.min(LEVEL_COUNT, s.unlockedMax));
+  if(Array.isArray(s.medals) && s.medals.length===LEVEL_COUNT) state.medals = s.medals;
+  if(Array.isArray(s.levelConfigs) && s.levelConfigs.length===LEVEL_COUNT) state.levelConfigs = s.levelConfigs;
+  if(Array.isArray(s.customLevels)) state.customLevels = s.customLevels;
+  if(typeof s.soundOn==='boolean') state.soundOn = s.soundOn;
+})();
+function persist(){ saveStore({lang:state.lang, mode:state.mode, unlockedMax:state.unlockedMax, medals:state.medals, levelConfigs:state.levelConfigs, customLevels:state.customLevels, soundOn:state.soundOn}); }
+
+/* ========= UI helpers ========= */
+function t(key){ const pack=I18N[state.lang]||I18N.zh; return pack[key]||key; }
+function setLang(v){ state.lang=v; persist(); applyLang(); rebuildLists(); }
+function applyLang(){
+  document.documentElement.setAttribute('lang', state.lang==='zh'?'zh':'en');
+  document.querySelectorAll('[data-i18n]').forEach(node=>{ const k=node.getAttribute('data-i18n'); node.textContent=t(k); });
+  document.title = (state.lang==='zh') ? '农田打地鼠 | Whack-a-Mole' : 'Whack-a-Mole | Protect the Farmland';
+  document.getElementById('hudMode').textContent = (state.mode==='challenge') ? t('challenge') : t('free');
+}
+
+/* === Auto UI mode === */
+function setUIMode(mode){ document.body.classList.toggle('ui-light', mode==='light'); document.body.classList.toggle('ui-dark', mode==='dark'); }
+function groupForLevel(lv){ return lv<=5?1: lv<=10?2: lv<=15?3: 4; }
+function applyBackgroundByLevel(levelId){
+  document.body.classList.remove('bg1','bg2','bg3','bg4','custom-bg'); document.body.style.backgroundImage='';
+  if(typeof levelId==='number'){ const group = groupForLevel(levelId); document.body.classList.add('bg'+group); setUIMode(group===4 ? 'dark' : 'light'); }
+  else{ const c = state.customLevels.find(x=>x.id===levelId); if(!c){ document.body.classList.add('bg1'); setUIMode('light'); return; }
+    const bg = c.config.bg || {type:'theme', themeGroup:1};
+    if(bg.type==='theme'){ const g = bg.themeGroup||1; document.body.classList.add('bg'+g); setUIMode(g===4 ? 'dark' : 'light'); }
+    else if(bg.type==='image' && bg.dataURL){ document.body.classList.add('custom-bg'); document.body.style.backgroundImage = `url(${bg.dataURL})`; analyzeImageBrightness(bg.dataURL).then(avg=>{ setUIMode(avg>0.65 ? 'light' : 'dark'); }).catch(()=> setUIMode('dark')); }
+    else setUIMode('light');
+  }
+}
+function analyzeImageBrightness(src){
+  return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>{ try{ const c=document.createElement('canvas'),ctx=c.getContext('2d'); c.width=32;c.height=32; ctx.drawImage(img,0,0,32,32); const d=ctx.getImageData(0,0,32,32).data; let s=0,n=0; for(let i=0;i<d.length;i+=4){ const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3]; if(a===0) continue; s += (0.2126*r+0.7152*g+0.0722*b)/255; n++; } resolve(n? s/n : 0.5);}catch(e){reject(e)} }; img.onerror=reject; img.src=src; });
+}
+
+/* ========= Board & HUD ========= */
+const board=document.getElementById('board');
+
+function updateHUD(){ document.getElementById('hudLevel').textContent = (typeof state.currentLevel==='number')? state.currentLevel : state.currentLevel; document.getElementById('hudTime').textContent = (state.lang==='zh'? '进度' : 'Progress') + ': ' + state.hits + '/' + ((state.effectiveCfg||getLevelConfig(state.currentLevel)||{}).totalMoles||0); document.getElementById('hudHit').textContent=state.hits; document.getElementById('hudMiss').textContent=Math.max(0,state.spawnCount-state.hits); let rate=state.spawnCount?Math.round((state.hits/state.spawnCount)*100):0; document.getElementById('hudRate').textContent=rate+'%'; document.getElementById('hudMedals').textContent=medalByRate(rate); }
+function medalByRate(r){ if(r>=80)return 3; if(r>=60)return 2; if(r>=40)return 1; return 0; }
+
+/* ========= Level helpers ========= */
+function getLevelConfig(levelId){ if(typeof levelId==='number'){ return state.levelConfigs[levelId-1]; } const c = state.customLevels.find(x=>x.id===levelId); return c? c.config : null; }
+function setMoleScale(scale){ document.documentElement.style.setProperty('--mole-scale', String(scale)); }
+
+
+// ===== Cute UI injection (v2) =====
+
+// Tiny helper to build a cute SVG mole
+function cuteMoleSVG(){
+  return `<svg class="mole-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <ellipse cx="100" cy="120" rx="70" ry="70" fill="#8e6a49" stroke="#3a2a1c" stroke-width="4"/>
+    <ellipse cx="100" cy="135" rx="48" ry="42" fill="#a88463" opacity=".7"/>
+    <circle cx="60" cy="60" r="24" fill="#8e6a49" stroke="#3a2a1c" stroke-width="4"/>
+    <circle cx="140" cy="60" r="24" fill="#8e6a49" stroke="#3a2a1c" stroke-width="4"/>
+    <circle cx="60" cy="60" r="14" fill="#f1b3b3"/>
+    <circle cx="140" cy="60" r="14" fill="#f1b3b3"/>
+    <ellipse cx="100" cy="100" rx="62" ry="60" fill="#8e6a49" stroke="#3a2a1c" stroke-width="4"/>
+    <ellipse class="eye" cx="78" cy="95" rx="7" ry="10" fill="#1c1c1c"/>
+    <ellipse class="eye" cx="122" cy="95" rx="7" ry="10" fill="#1c1c1c"/>
+    <ellipse cx="100" cy="115" rx="12" ry="8" fill="#f6a1a1" stroke="#3a2a1c" stroke-width="3"/>
+    <g class="whisk" stroke="#3a2a1c" stroke-width="3">
+      <line x1="48" y1="112" x2="78" y2="112"/>
+      <line x1="50" y1="120" x2="78" y2="116"/>
+      <line x1="50" y1="104" x2="78" y2="108"/>
+      <line x1="122" y1="112" x2="152" y2="112"/>
+      <line x1="122" y1="116" x2="150" y2="120"/>
+      <line x1="122" y1="108" x2="150" y2="104"/>
+    </g>
+    <rect x="93" y="128" width="6" height="8" fill="#fff" stroke="#3a2a1c" stroke-width="2"/>
+    <rect x="101" y="128" width="6" height="8" fill="#fff" stroke="#3a2a1c" stroke-width="2"/>
+  </svg>`;
+}
+
+board.innerHTML='';
+
+  // Keep grid semantics; column count switches at >9
+  const cols = (CURRENT_HOLES<=9) ? 3 : 4;
+  board.style.display='grid';
+  board.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+
+  // Create holes & moles aligned by index
+  for(let i=0;i<CURRENT_HOLES;i++){
+    const hole=document.createElement('div');
+    hole.className='hole cute'; // keep original .hole styles + cute
+    const mole=document.createElement('div');
+    mole.className='mole cute'; // keep original .mole styles + cute
+    mole.setAttribute('role','button'); mole.setAttribute('aria-label','mole');
+
+    // SVG face
+    try{ mole.innerHTML = cuteMoleSVG(); }catch(e){ mole.textContent='🐭'; }
+
+    // Click handler -> reuse original hitMole if exists
+    if(typeof hitMole==='function'){ mole.addEventListener('click',()=>hitMole(i,mole)); }
+
+    hole.appendChild(mole);
+    board.appendChild(hole);
+  }
+
+
+
+// ===== Hi-Vis UI injection =====
+
+// Hi-Vis mole SVG with thick outlines and white eyes for clear separation
+function hiVisMoleSVG(){
+  return `<svg class="mole-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/200/svg" aria-hidden="true">
+    <!-- body -->
+    <ellipse class="stroke" cx="100" cy="124" rx="70" ry="68" fill="#d7925b"/>
+    <!-- belly -->
+    <ellipse class="belly stroke" cx="100" cy="138" rx="48" ry="40"/>
+    <!-- head -->
+    <ellipse class="stroke" cx="100" cy="98" rx="64" ry="58" fill="#d7925b"/>
+    <!-- ears -->
+    <circle class="stroke" cx="60" cy="52" r="22" fill="#d7925b"/>
+    <circle class="stroke" cx="140" cy="52" r="22" fill="#d7925b"/>
+    <!-- eyes with white sclera -->
+    <ellipse class="eye-white" cx="78" cy="92" rx="11" ry="9"/>
+    <ellipse class="eye-white" cx="122" cy="92" rx="11" ry="9"/>
+    <circle class="pupil" cx="78" cy="92" r="5"/>
+    <circle class="pupil" cx="122" cy="92" r="5"/>
+    <!-- snout -->
+    <ellipse class="snout" cx="100" cy="112" rx="16" ry="10"/>
+    <!-- teeth -->
+    <rect class="tooth" x="92" y="124" width="8" height="10"/>
+    <rect class="tooth" x="100" y="124" width="8" height="10"/>
+    <!-- highlight -->
+    <ellipse class="shine" cx="120" cy="75" rx="14" ry="8"/>
+  </svg>`;
+}
+
+function buildBoard(n){
+  CURRENT_HOLES = n || CURRENT_HOLES || 9;
+  const board = document.getElementById('board') || window.board;
+  if(!board){ return; }
+  board.innerHTML='';
+  const cols = (CURRENT_HOLES<=9) ? 3 : 4;
+  board.style.display='grid';
+  board.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+
+  for(let i=0;i<CURRENT_HOLES;i++){
+    const hole=document.createElement('div');
+    hole.className='hole hivis';
+    const mole=document.createElement('div');
+    mole.className='mole hivis';
+    mole.setAttribute('role','button');
+    mole.setAttribute('aria-label','mole');
+    try{ mole.innerHTML = hiVisMoleSVG(); }catch(e){ mole.textContent='🐭'; }
+    if(typeof hitMole==='function'){ mole.addEventListener('click',()=>hitMole(i,mole)); }
+    hole.appendChild(mole);
+    board.appendChild(hole);
+  }
+}
+
+
+// --- Robust hide that validates token to avoid cross-timers ---
+function safeHide(i,m,tk,hit){
+  if(!m) return;
+  if(typeof state.holeToken!=='undefined' && tk!==undefined && String(tk)!==String(state.holeToken[i])) return; // stale timer
+  if(!state.activeMoles.has(i)) return;
+  state.activeMoles.delete(i);
+  m.classList.remove('show');
+  if(hit) beep();
+  updateHUD();
+  checkAutoEnd();
+}
+// Patch hideMole to check token from dataset when called by click handlers
+if(typeof hideMole==='function'){
+  const _origHide = hideMole;
+  hideMole = function(i,m,hit){
+    const tk = m && m.dataset ? m.dataset.tk : undefined;
+    return safeHide(i,m,tk,hit);
+  };
+}
+
+
+// ---- Utilities: enforce hole count and verify board ----
+function ensureHoleCount(levelId, cfg){
+  let h = (cfg && typeof cfg.holes!=='undefined') ? Number(cfg.holes) : 9;
+  if(levelId===1) h = 9; // force Level 1 to 9 holes
+  if(!Number.isFinite(h)) h = 9;
+  h = Math.max(9, Math.min(16, h));
+  return h;
+}
+function verifyBoardHoles(n){
+  try{
+    const board = document.getElementById('board');
+    if(board && board.children && board.children.length !== n){
+      // rebuild if mismatch
+      if(typeof buildBoard==='function'){ buildBoard(n); }
+    }
+  }catch(e){}
+}
+
+
+// ---- Sanitize level config (keeps early levels at concurrent=1) ----
+function sanitizeLevelConfig(levelId, cfg){
+  const s = Object.assign({}, cfg||{});
+  // Holes
+  const holes = ensureHoleCount(levelId, cfg);
+  s.holes = holes;
+  // Concurrent: level 1..10 force 1 (original design); 11..20 clamp 1..4
+  const rawConc = Number.isFinite(+s.concurrent) ? +s.concurrent : 1;
+  const maxConc = Math.min(holes, (levelId<=10 ? 1 : 4));
+  s.concurrent = Math.max(1, Math.min(maxConc, rawConc));
+  // Other guards
+  s.totalMoles = Math.max(1, (s.totalMoles|0));
+  s.spawnInterval = Math.max(200, (s.spawnInterval|0));
+  s.upTime = Math.max(250, (s.upTime|0));
+  if(!Number.isFinite(+s.moleScale)) s.moleScale = 1.0;
+  return s;
+}
+
+
+// Auto-end when all moles have spawned and none are active
+function checkAutoEnd(){
+  const cfg = state.effectiveCfg || (typeof sanitizeLevelConfig==='function' ? sanitizeLevelConfig(state.currentLevel, getLevelConfig(state.currentLevel)||{}) : (getLevelConfig(state.currentLevel)||{}));
+  if(state.spawnCount >= (cfg.totalMoles||0) && state.activeMoles.size===0){
+    endLevel();
+  }
+}
+
+/* ========= Game Flow ========= */
+let selectedLevel = 1;
+function startLevel(levelId){
+  state.currentLevel=levelId; applyBackgroundByLevel(levelId);
+  const rawCfg=getLevelConfig(levelId); if(!rawCfg) return; const cfg=sanitizeLevelConfig(levelId, rawCfg); state.effectiveCfg=cfg; CURRENT_HOLES=cfg.holes; if(typeof buildBoard==='function'){ buildBoard(CURRENT_HOLES); } verifyBoardHoles(CURRENT_HOLES); state.holeToken=Array(CURRENT_HOLES).fill(0); state.lastHole=-1; state.recentHoles=[];
+/* remainingTime removed */ state.spawnCount=0; state.hits=0; state.activeMoles.clear();
+  state.running=true; state.paused=false; setMoleScale(cfg.moleScale || 1.0); updateHUD();
+  clearInterval(state.levelTimer); clearInterval(state.spawnTimer);
+
+  /* countdown removed */
+
+
+  // Batch simultaneous spawn each tick
+  state.spawnTimer=setInterval(()=>{ if(state.paused) return; const cfg = state.effectiveCfg || sanitizeLevelConfig(state.currentLevel, getLevelConfig(state.currentLevel)||{});
+    if(state.spawnCount>=cfg.totalMoles) return;
+    const active = state.activeMoles.size;
+    let capacity = Math.min(cfg.concurrent - active, cfg.totalMoles - state.spawnCount);
+    if(capacity <= 0) return;
+    let free=[...Array(CURRENT_HOLES).keys()].filter(i=>!state.activeMoles.has(i));
+    // strict cooldown: avoid the most recent hole
+    if(Array.isArray(state.recentHoles) && state.recentHoles.length>0 && free.length>1){
+      free = free.filter(j=>j!==state.recentHoles[state.recentHoles.length-1]);
+    }
+    capacity = Math.min(capacity, free.length);
+    for(let k=0;k<capacity;k++){
+      const idx = Math.floor(Math.random()*free.length);
+      const i = free.splice(idx,1)[0];
+      if(!Array.isArray(state.recentHoles)) state.recentHoles=[];
+      state.recentHoles.push(i);
+      if(state.recentHoles.length>1) state.recentHoles.shift();
+      spawnAt(i);
+    }
+    checkAutoEnd(); }
+, cfg.spawnInterval);
+}
+
+function spawnAt(i){
+  const m = board.children[i].querySelector('.mole');
+  if(!m) return;
+  // tokenize per-hole to prevent stale timers from hiding a new mole
+  if(!state.holeToken) state.holeToken = Array(CURRENT_HOLES).fill(0);
+  const tk = (state.holeToken[i] = (state.holeToken[i]||0) + 1);
+  m.dataset.tk = String(tk);
+
+  state.activeMoles.add(i);
+  state.spawnCount++;
+  m.classList.add('show');
+  updateHUD();
+
+  const currentLevel = state.currentLevel;
+  setTimeout(()=>{
+    // only hide if still in same level and token matches
+    if(state.currentLevel===currentLevel) safeHide(i,m,tk,false);
+  }, (state.effectiveCfg||{}).upTime||800);
+
+  state.lastHole = i;
+}
+function hideMole(i,m,hit){ if(!state.activeMoles.has(i)) return; state.activeMoles.delete(i); m.classList.remove('show'); if(hit) beep(); updateHUD(); }
+function hitMole(i,m){ if(!state.running||state.paused) return; if(!state.activeMoles.has(i)) return; state.hits++; hideMole(i,m,true); }
+
+function endLevel(){
+  clearInterval(state.levelTimer); clearInterval(state.spawnTimer);
+  state.running=false; state.paused=false;
+  let rate=state.spawnCount?Math.round((state.hits/state.spawnCount)*100):0;
+  const earned = medalByRate(rate);
+  let prevBest = 0;
+
+  if(state.mode==='challenge' && typeof state.currentLevel==='number'){
+    const idx = state.currentLevel - 1;
+    prevBest = state.medals[idx] || 0;
+    state.medals[idx] = Math.max(state.medals[idx], earned);
+    if(state.currentLevel < LEVEL_COUNT){
+      state.unlockedMax = Math.max(state.unlockedMax, state.currentLevel + 1);
+    }
+    persist();
+  }
+
+  // store last result for dialog
+  state.lastResult = { rate, earned, prevBest };
+
+  // open dialog with stats + medals
+  openEndDialog();
+  if(typeof rebuildLists==='function'){ rebuildLists(); }
+
+  // ensure menu reflects newly unlocked level
+  if(typeof rebuildLists === 'function'){ rebuildLists(); }
+}
+
+
+/* ====== Menu ====== */
+const overlay=document.getElementById('overlay');
+function openMenu(){ overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); if(state.running) state.paused=true; rebuildLists(); }
+function closeMenu(){ overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); if(state.running) state.paused=false; }
+document.getElementById('btnMenu').onclick=openMenu; document.getElementById('btnCloseMenu').onclick=closeMenu;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(overlay.classList.contains('show')) closeMenu(); else openMenu(); } });
+
+/* ====== Tabs ====== */
+const tabBtns=document.querySelectorAll('.tabs .btn[data-tab]');
+tabBtns.forEach(btn=>{ btn.addEventListener('click',()=>{ tabBtns.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); const tab=btn.dataset.tab; document.querySelectorAll('.section').forEach(sec=>{ sec.classList.toggle('active', sec.id==='sec-'+tab); }); }); });
+
+/* ====== Level lists & editor ====== */
+const levelsPills = document.getElementById('levelsPills');
+const edLevel = document.getElementById('edLevel');
+function rebuildLists(){
+  document.getElementById('hudMode').textContent = (state.mode==='challenge') ? t('challenge') : t('free');
+  const modeSelect=document.getElementById('modeSelect'); modeSelect.value=state.mode;
+
+  levelsPills.innerHTML='';
+  const makePill=(label, id, locked, custom=false)=>{
+    const span=document.createElement('span');
+    span.className='pill'+(locked?' locked':'')+(custom?' custom':'');
+    span.textContent=label; span.dataset.levelId = typeof id==='number'? String(id) : String(id);
+    if(!locked){ span.addEventListener('click', ()=>{ selectedLevel = (isNaN(Number(span.dataset.levelId))? span.dataset.levelId : Number(span.dataset.levelId)); highlightSelection(); }); }
+    return span;
+  };
+  for(let i=1;i<=LEVEL_COUNT;i++){
+    const locked = (state.mode==='challenge' && i>state.unlockedMax);
+    levelsPills.appendChild(makePill((state.lang==='zh'?'关卡 ':'Lv ')+i, i, locked, false));
+  }
+  if(state.mode==='free' && state.customLevels.length){
+    const divider=document.createElement('div'); divider.style.marginTop='6px'; divider.style.fontSize='14px'; divider.style.opacity='0.8';
+    divider.textContent = (state.lang==='zh'?'自定义关卡:':'Custom Levels:');
+    levelsPills.appendChild(divider);
+    state.customLevels.forEach(c=>{ levelsPills.appendChild(makePill(c.name || c.id, c.id, false, true)); });
+  }
+
+  edLevel.innerHTML='';
+  for(let i=1;i<=LEVEL_COUNT;i++){ const op=document.createElement('option'); op.value=i; op.textContent=(state.lang==='zh'?'关卡 ':'Level ')+i; edLevel.appendChild(op); }
+  if(state.customLevels.length){ const group=document.createElement('optgroup'); group.label = (state.lang==='zh'?'自定义':'Custom'); state.customLevels.forEach(c=>{ const op=document.createElement('option'); op.value=c.id; op.textContent=c.name || c.id; group.appendChild(op); }); edLevel.appendChild(group); }
+
+  if(state.mode==='challenge' && (typeof selectedLevel!=='number' || selectedLevel>state.unlockedMax)) selectedLevel=1;
+  if(state.mode==='free' && !selectedLevel) selectedLevel=1;
+  highlightSelection();
+}
+function highlightSelection(){ const pills = Array.from(levelsPills.querySelectorAll('.pill')); pills.forEach(p=>p.classList.remove('active')); const match = pills.find(p=>p.dataset.levelId === String(selectedLevel)); if(match) match.classList.add('active'); }
+
+/* Editor fields */
+edLevel.onchange=()=>{ const raw = edLevel.value; const id = isNaN(Number(raw)) ? raw : Number(raw); loadEdFields(id); };
+function loadEdFields(id){
+  const cfg = getLevelConfig(id); if(!cfg) return;
+  document.getElementById('edDuration').value=cfg.duration;
+  document.getElementById('edTotal').value=cfg.totalMoles;
+  document.getElementById('edInterval').value=cfg.spawnInterval;
+  document.getElementById('edUpTime').value=cfg.upTime;
+  document.getElementById('edConcurrent').value=cfg.concurrent; if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;} if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;}
+
+// -- Editor: delete custom level (slim) --
+const delBtn = document.getElementById('btnDeleteCustom');
+if(delBtn){
+  delBtn.addEventListener('click', ()=>{
+    const raw = edLevel.value; const id = isNaN(Number(raw)) ? raw : Number(raw);
+    if(typeof id === 'number'){ alert(t('notCustom')); return; }
+    const idx = Array.isArray(state.customLevels) ? state.customLevels.findIndex(x=> String(x.id)===String(id)) : -1;
+    if(idx<0){ alert(t('notCustom')); return; }
+    if(!confirm(t('confirmDelete'))) return;
+    state.customLevels.splice(idx,1);
+    persist();
+    rebuildLists();
+    const select = document.getElementById('edLevel'); if(select){ select.value = "1"; loadEdFields(1); }
+    alert(t('deletedCustom'));
+  });
+  const _origOnChange = edLevel.onchange;
+  edLevel.onchange = ()=>{
+    const raw = edLevel.value; const id = isNaN(Number(raw)) ? raw : Number(raw);
+    delBtn.disabled = (typeof id === 'number');
+    if(_origOnChange) _origOnChange();
+  };
+  (function(){ const raw = edLevel.value; const id = isNaN(Number(raw)) ? raw : Number(raw); delBtn.disabled = (typeof id === 'number'); })();
+}
+
+// === Editor normalize (slim) ===
+function clampInt(v, min, max, defv){ v = Number(v); if(!Number.isFinite(v)) return defv; return Math.max(min, Math.min(max, Math.floor(v))); }
+function normalizeEditorForm(){
+  const holes = clampInt(document.getElementById('edHoles').value, 9, 16, 9);
+  document.getElementById('edHoles').value = holes;
+  let maxConc = Math.min(holes, 4);
+  const rawId = edLevel.value; const id = isNaN(Number(rawId))? rawId : Number(rawId);
+  if(typeof id==='number' && id<=10) maxConc = 1;
+  document.getElementById('edConcurrent').max = String(maxConc);
+  let conc = clampInt(document.getElementById('edConcurrent').value, 1, maxConc, 1);
+  document.getElementById('edConcurrent').value = conc;
+}
+['change','input'].forEach(ev=>{
+  const holesEl = document.getElementById('edHoles');
+  const concEl = document.getElementById('edConcurrent');
+  if(holesEl){ holesEl.addEventListener(ev, normalizeEditorForm); }
+  if(concEl){ concEl.addEventListener(ev, normalizeEditorForm); }
+});
+  document.getElementById('edMoleScale').value=Math.round((cfg.moleScale||1)*100);
+  document.getElementById('edMoleScaleVal').textContent=Math.round((cfg.moleScale||1)*100)+'%';
+  document.getElementById('previewBox').style.setProperty('--mole-scale', String(cfg.moleScale||1));
+  const bg = cfg.bg || {type:'theme', themeGroup: groupForLevel(typeof id==='number'? id : 1)};
+  document.getElementById('edBgType').value = bg.type || 'theme';
+  document.getElementById('bgThemeRow').style.display = (bg.type==='theme')? '' : 'none';
+  document.getElementById('bgImageRow').style.display = (bg.type==='image')? '' : 'none';
+  document.getElementById('edBgTheme').value = String(bg.themeGroup|| groupForLevel(typeof id==='number'? id : 1));
+  normalizeEditorForm();
+}
+document.getElementById('edMoleScale').addEventListener('input',(e)=>{ const val=Number(e.target.value); document.getElementById('edMoleScaleVal').textContent = val+'%'; document.getElementById('previewBox').style.setProperty('--mole-scale', String(val/100)); });
+document.getElementById('edBgType').addEventListener('change',(e)=>{ const v=e.target.value; document.getElementById('bgThemeRow').style.display = v==='theme' ? '' : 'none'; document.getElementById('bgImageRow').style.display = v==='image' ? '' : 'none'; });
+
+document.getElementById('btnSaveCfg').onclick=()=>{
+  const rawId = edLevel.value; const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
+  const cfg = { duration:+document.getElementById('edDuration').value, totalMoles:+document.getElementById('edTotal').value, spawnInterval:+document.getElementById('edInterval').value, upTime:+document.getElementById('edUpTime').value, concurrent:+document.getElementById('edConcurrent').value, holes:+(document.getElementById('edHoles')?document.getElementById('edHoles').value:9), moleScale:+document.getElementById('edMoleScale').value/100, bg:{} };
+  const bgType=document.getElementById('edBgType').value;
+  if(bgType==='theme'){ cfg.bg={type:'theme', themeGroup:Number(document.getElementById('edBgTheme').value)}; applySave(); }
+  else{ const input=document.getElementById('edBgImage'); const f=input.files&&input.files[0];
+    if(f){ const reader=new FileReader(); reader.onload=()=>{ cfg.bg={type:'image', dataURL:String(reader.result)}; applySave(); }; reader.readAsDataURL(f); return; }
+    else{ const existing=getLevelConfig(id); if(existing && existing.bg && existing.bg.type==='image') cfg.bg=existing.bg; else cfg.bg={type:'theme', themeGroup:1}; applySave(); }
+  }
+  function applySave(){ if(typeof id==='number') state.levelConfigs[id-1]=cfg; else{ const idx=state.customLevels.findIndex(x=>x.id===id); if(idx>=0) state.customLevels[idx].config=cfg; } persist(); alert((state.lang==='zh'?'保存成功：':'Saved: ')+ (typeof id==='number' ? (state.lang==='zh'?'关卡 ':'Level ')+id : id)); }
+};
+document.getElementById('btnLoadCfg').onclick=()=>{ const rawId=edLevel.value; const id=isNaN(Number(rawId))? rawId : Number(rawId); if(typeof id==='number'){ state.levelConfigs[id-1]=defaultConfigForLevel(id); persist(); loadEdFields(id); alert((state.lang==='zh'?'已恢复默认：关卡 ':'Restored default: Level ')+id); } else alert(state.lang==='zh'?'自定义关卡无默认模板':'No default for custom levels'); };
+
+/* ====== Mode & Play controls ====== */
+const modeSelect=document.getElementById('modeSelect');
+['change','input'].forEach(ev=>modeSelect.addEventListener(ev, ()=>{ state.mode=modeSelect.value; persist(); rebuildLists(); }));
+
+document.getElementById('btnStartSelected').onclick=()=>{
+  const modeNow = document.getElementById('modeSelect').value || state.mode; // use live value
+  const chosen = selectedLevel || 1;
+  if(modeNow==='challenge' && typeof chosen==='number' && chosen>state.unlockedMax){
+    alert(state.lang==='zh'?'尚未解锁该关卡':'Level locked'); return;
+  }
+  state.mode = modeNow; persist();
+  startLevel(chosen); closeMenu();
+};
+document.getElementById('btnRestart').onclick=()=>{ startLevel(state.currentLevel); closeMenu(); };
+
+/* ====== Sound (persistent AudioContext) ====== */
+const AudioAPI = { ctx:null, unlocked:false };
+function ensureAudioUnlocked(){ try{ if(!AudioAPI.ctx){ AudioAPI.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if(AudioAPI.ctx.state==='suspended'){ AudioAPI.ctx.resume(); } AudioAPI.unlocked = true; }catch{} }
+function unlockHandler(){ ensureAudioUnlocked(); window.removeEventListener('pointerdown', unlockHandler); window.removeEventListener('keydown', unlockHandler); }
+window.addEventListener('pointerdown', unlockHandler); window.addEventListener('keydown', unlockHandler);
+function beep(){ if(!state.soundOn) return; ensureAudioUnlocked(); if(!AudioAPI.ctx) return; const o=AudioAPI.ctx.createOscillator(); const g=AudioAPI.ctx.createGain(); o.type='square'; o.frequency.value=700; g.gain.setValueAtTime(0.0001, AudioAPI.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.12, AudioAPI.ctx.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001, AudioAPI.ctx.currentTime+0.12); o.connect(g).connect(AudioAPI.ctx.destination); o.start(); o.stop(AudioAPI.ctx.currentTime+0.14); }
+document.getElementById('btnSound').onclick=()=>{ state.soundOn=!state.soundOn; persist(); document.getElementById('btnSound').textContent=state.soundOn?'🔊':'🔈'; if(state.soundOn){ ensureAudioUnlocked(); beep(); } };
+
+/* ====== Welcome ====== */
+const welcome=document.getElementById('welcome'); const welcomeLang=document.getElementById('welcomeLang'); welcomeLang.value=state.lang;
+document.getElementById('btnStartChallenge').onclick=()=>{ state.mode='challenge'; persist(); applyLang(); welcome.style.display='none'; welcome.setAttribute('aria-hidden','true'); document.getElementById('hudMode').textContent=t('challenge'); startLevel(1); };
+document.getElementById('btnStartFree').onclick=()=>{ state.mode='free'; persist(); applyLang(); welcome.style.display='none'; welcome.setAttribute('aria-hidden','true'); document.getElementById('hudMode').textContent=t('free'); openMenu(); rebuildLists(); };
+welcomeLang.onchange=()=>{ setLang(welcomeLang.value); };
+const menuLang=document.getElementById('menuLang'); menuLang.value=state.lang; menuLang.onchange=()=>{ setLang(menuLang.value); };
+
+
+// End dialog wiring
+const endDialog = document.getElementById('endDialog');
+const endStats = document.getElementById('endStats');
+const btnNextLevel = document.getElementById('btnNextLevel');
+const btnBackMenu = document.getElementById('btnBackMenu');
+if(btnNextLevel){
+  btnNextLevel.onclick = ()=>{
+    const next = (typeof state.currentLevel==='number')? Math.min(state.currentLevel+1, LEVEL_COUNT) : 1;
+    closeEndDialog();
+    startLevel(next);
+  };
+}
+if(btnBackMenu){
+  btnBackMenu.onclick = ()=>{ closeEndDialog(); openMenu(); };
+}
+
+function openEndDialog(){
+  if(!endDialog) return;
+  const cfg = state.effectiveCfg || (typeof sanitizeLevelConfig==='function' ? sanitizeLevelConfig(state.currentLevel, getLevelConfig(state.currentLevel)||{}) : (getLevelConfig(state.currentLevel)||{}));
+  const rate = state.spawnCount? Math.round((state.hits/state.spawnCount)*100) : 0;
+  const earned = (state.lastResult && typeof state.lastResult.earned==='number') ? state.lastResult.earned : medalByRate(rate);
+  const bestBefore = (state.lastResult && typeof state.lastResult.prevBest==='number') ? state.lastResult.prevBest : 0;
+
+  const baseStats = (state.lang==='zh' ? 
+    `本关统计：击中 ${state.hits}/${state.spawnCount}（命中率 ${rate}%）` : 
+    `Stats: ${state.hits}/${state.spawnCount} hit (accuracy ${rate}%)`);
+
+  // medals row
+  const medalHTML = renderMedals(earned);
+  const bestLine = (state.lang==='zh' ? `历史最佳（本关）：${Math.max(bestBefore, earned)} 枚` : `Best (this level): ${Math.max(bestBefore, earned)}`);
+
+  
+// --- safety: ensure medals array exists ---
+if(!Array.isArray(state.medals)){
+  const cnt = (typeof LEVEL_COUNT!=='undefined'?LEVEL_COUNT:20);
+  state.medals = Array(cnt).fill(0);
+}
+
+  // Level 20 honor (optional)
+  let honorLine = '';
+  if(state.mode==='challenge' && Number(state.currentLevel) === (typeof LEVEL_COUNT!=='undefined'?LEVEL_COUNT:20)){
+    const sum = (state.medals||[]).reduce((a,b)=>a+b,0);
+    let titleIdx = 0; if(sum>=60) titleIdx=3; else if(sum>=40) titleIdx=2; else if(sum>=20) titleIdx=1;
+    const title = (I18N[state.lang].honors||[])[titleIdx] || 'Honor';
+    honorLine = state.lang==='zh' ? `荣誉称号：${title}（累计勋章 ${sum}）` : `Title: ${title} (total medals ${sum})`;
+  }
+
+  endStats.innerHTML = baseStats + (honorLine? `<br>${honorLine}` : '');
+  const mr = document.getElementById('medalRow'); if(mr){ mr.innerHTML = medalHTML + ` <span class="medal-label">| `+ bestLine +`</span>`; }
+  endDialog.style.display='block';
+}
+
+function closeEndDialog(){ if(endDialog) endDialog.style.display='none'; }
+
+
+function medalSVG(color){
+  const c = color || '#F4C542'; // gold default
+  return `<svg class="medal-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="32" cy="36" r="18" fill="${c}" stroke="#5a4a1f" stroke-width="3"/>
+    <polygon points="32,14 37,24 48,25 40,32 42,43 32,38 22,43 24,32 16,25 27,24" fill="#fff3b0" opacity=".7"/>
+    <path d="M22 6 L30 22 L26 24 L16 8 Z" fill="#d34b4b"/><path d="M42 6 L34 22 L38 24 L48 8 Z" fill="#487ad3"/>
+  </svg>`;
+}
+function medalColorByCount(n){
+  if(n>=3) return '#F4C542'; // gold
+  if(n==2) return '#C0C0C0'; // silver
+  if(n==1) return '#CD7F32'; // bronze
+  return '#888';
+}
+function renderMedals(n){
+  const col = medalColorByCount(n);
+  if(n<=0) return (state.lang==='zh'?'未获得勋章':'No medals earned');
+  let out='';
+  for(let i=0;i<n;i++){ out += medalSVG(col); }
+  const label = (state.lang==='zh'?'获得勋章：':'Medals earned: ')+ String(n);
+  return out + `<span class="medal-label">`+ label +`</span>`;
+}
+
+/* ====== Init ====== */
+function init(){ setUIMode('light'); applyLang(); buildBoard(); rebuildLists(); edLevel.value=1; edLevel.dispatchEvent(new Event('change')); applyBackgroundByLevel(1); }
+init();
+</script>
+</body>
+</html>
