@@ -79,9 +79,19 @@
       box-shadow:0 6px 10px rgba(0,0,0,.3);
       display:flex;align-items:center;justify-content:center;
       font-size: calc(var(--mole-w) * 0.6 * var(--mole-scale));
-      color:#fff;cursor:pointer; transition:bottom .18s ease-out;
+      color:#fff;cursor:pointer; transition:bottom .18s ease-out, filter .2s ease-out;
     }
     .mole.show{bottom:10px}
+    
+    /* NEW: Style for the "good" mouse */
+    .mole.good {
+      /* This filter will change the hue (color) of the mole,
+         making it visually distinct (e.g., bluish/purplish) */
+      filter: hue-rotate(200deg) brightness(1.1);
+      /* Or you can force a specific background */
+      /* background: #4a90e2; */
+    }
+
 
     #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:50}
     #overlay.show{display:flex}
@@ -94,8 +104,23 @@
     .section.active{display:block}
 
     .field{margin:6px 0;display:grid;grid-template-columns:240px 1fr;gap:8px;align-items:center}
+    /* NEW: Checkbox style */
+    .field.checkbox-field {
+      grid-template-columns: auto 1fr; /* Adjust columns for checkbox */
+      justify-content: start; /* Align to the start */
+      gap: 12px; /* Add some gap */
+    }
+    .field.checkbox-field input[type="checkbox"] {
+      width: auto;
+      height: 1.1em;
+      transform: scale(1.3);
+      margin-left: 4px;
+    }
     /* default (light) */
     .field input,.field select,.field textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:#fff;color:#111}
+    /* Exclude checkbox from 100% width */
+    .field input[type="checkbox"] { width: auto; }
+
 
     #footerBar{position:fixed;left:0;right:0;bottom:0;padding:6px;text-align:center;background:rgba(255,255,255,.7)}
     .btn{font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid #cfd9cf;background:#fff;cursor:pointer}
@@ -166,6 +191,8 @@
   display:flex; align-items:center; justify-content:center;
   overflow: visible;
   font-size: 0;
+  /* Add filter transition */
+  transition: bottom .18s ease-out, filter .2s ease-out;
 }
 
 /* Gentle pop when showing (doesn't affect bottom) */
@@ -231,6 +258,8 @@ body.ui-dark .pill.locked{opacity:.7 !important;border-style:dashed !important;b
   display:flex; align-items:center; justify-content:center;
   font-size: 0;
   z-index: 2; /* above hole rim highlight */
+  /* Add filter transition */
+  transition: bottom .18s ease-out, filter .2s ease-out;
 }
 /* Gentle pop on show for visibility without disturbing bottom logic */
 .mole.hivis.show{ animation: hivis-pop 200ms cubic-bezier(.22,1,.36,1) both; }
@@ -351,13 +380,19 @@ body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !im
         <div class="field"><label data-i18n="edInterval">出现频率（ms/批）</label><input id="edInterval" type="number" min="200" max="3000" step="50"></div>
         <div class="field"><label data-i18n="edUpTime">停留时间（ms）</label><input id="edUpTime" type="number" min="300" max="3000" step="50"></div>
         <div class="field">
-  <label data-i18n="edConcurrent">同时出现数（只）</label>
-  <input id="edConcurrent" type="number" min="1" max="4" step="1">
-</div>
-<div class="field">
-  <label data-i18n="edHoles">洞口数量（9-16）</label>
-  <input id="edHoles" type="number" min="9" max="16" step="1">
-</div>
+          <label data-i18n="edConcurrent">同时出现数（只）</label>
+          <input id="edConcurrent" type="number" min="1" max="4" step="1">
+        </div>
+        <div class="field">
+          <label data-i18n="edHoles">洞口数量（9-16）</label>
+          <input id="edHoles" type="number" min="9" max="16" step="1">
+        </div>
+        <!-- NEW: "Good Mouse" Checkbox -->
+        <div class="field checkbox-field">
+          <input id="edEnableGoodMice" type="checkbox">
+          <label for="edEnableGoodMice" data-i18n="edEnableGoodMice">启用好老鼠 (扣分)</label>
+        </div>
+
         <div class="field">
           <label data-i18n="edMoleSize">地鼠大小（%）</label>
           <div class="preview-wrap">
@@ -430,8 +465,14 @@ body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !im
 <script>
 /* ========= i18n ========= */
 const I18N={
-  zh:{title:"农田打地鼠 · 保护农地",welcomeTip:"欢迎！请选择模式和语言，开始游戏。",startChallenge:"开始挑战", startFree:"进入自由模式",language:"语言", menu:"菜单",challenge:"挑战模式", free:"自由模式",challengeDesc:"依次闯关（1→20），通关后解锁下一关。通关 20 关后根据累计勋章授予荣誉称号。",freeDesc:"任意选择任何关卡进行游玩（包括你自定义的新关卡）。",tabPlay:"关卡/开始", tabEditor:"编辑器", tabLang:"语言",closeContinue:"关闭（继续）",currentMode:"当前模式", selectLevel:"选择关卡",startSelected:"开始所选关卡", restartCurr:"重新开始当前关",pauseNote:"提示：打开菜单时游戏会暂停，关闭菜单后继续。按 ESC 可开关菜单。",edSelect:"选择关卡（编辑）", edDuration:"每关时间（秒）", edTotal:"地鼠总数（个）",edInterval:"出现频率（ms/批）", edUpTime:"停留时间（ms）", edConcurrent:"同时出现数（只）",edHoles:"洞口数量（9-16）",edMoleSize:"地鼠大小（%）", edBgType:"背景类型", edBgTheme:"主题背景（组）", edBgImage:"上传背景图片",saveCfg:"保存设置", loadDefault:"载入该关默认", createCustom:"创建新关卡（自由模式）",level:"关卡", time:"时间", hits:"命中", miss:"漏打", rate:"命中率", medals:"勋章",footer:"点击地鼠获得分数。按 ESC 打开/关闭菜单。",modeLabel:"模式",honors:["园林学徒","园林标兵","园林卫士","园林皇家队长"]},
-  en:{title:"Whack-a-Mole · Protect the Farmland",welcomeTip:"Welcome! Pick a mode and language to begin.",startChallenge:"Start Challenge", startFree:"Enter Free Mode",language:"Language", menu:"Menu",challenge:"Challenge Mode", free:"Free Mode",challengeDesc:"Play levels 1→20 in order; beat a level to unlock the next. After level 20, receive a title based on total medals.",freeDesc:"Play any level freely (including your custom levels).",tabPlay:"Play/Levels", tabEditor:"Editor", tabLang:"Language",closeContinue:"Close (Resume)",currentMode:"Current Mode", selectLevel:"Select Level",startSelected:"Start Selected Level", restartCurr:"Restart Current",pauseNote:"Note: The game pauses while the menu is open and resumes when closed. Press ESC to toggle.",edSelect:"Select Level (Edit)", edDuration:"Duration (sec)", edTotal:"Total moles",edInterval:"Spawn interval (ms/batch)", edUpTime:"Mole up-time (ms)", edConcurrent:"Concurrent moles",edHoles:"Hole count (9–16)",edMoleSize:"Mole size (%)", edBgType:"Background Type", edBgTheme:"Theme Group", edBgImage:"Upload Background Image",saveCfg:"Save Settings", loadDefault:"Load Default", createCustom:"Create New Level (Free Mode)",level:"Level", time:"Time", hits:"Hits", miss:"Misses", rate:"Hit Rate", medals:"Medals",footer:"Click popping moles to score. Press ESC to open/close the menu.",modeLabel:"Mode",honors:["Apprentice","Model Player","Guardian","Royal Captain"]}
+  zh:{title:"农田打地鼠 · 保护农地",welcomeTip:"欢迎！请选择模式和语言，开始游戏。",startChallenge:"开始挑战", startFree:"进入自由模式",language:"语言", menu:"菜单",challenge:"挑战模式", free:"自由模式",challengeDesc:"依次闯关（1→20），通关后解锁下一关。通关 20 关后根据累计勋章授予荣誉称号。",freeDesc:"任意选择任何关卡进行游玩（包括你自定义的新关卡）。",tabPlay:"关卡/开始", tabEditor:"编辑器", tabLang:"语言",closeContinue:"关闭（继续）",currentMode:"当前模式", selectLevel:"选择关卡",startSelected:"开始所选关卡", restartCurr:"重新开始当前关",pauseNote:"提示：打开菜单时游戏会暂停，关闭菜单后继续。按 ESC 可开关菜单。",edSelect:"选择关卡（编辑）", edDuration:"每关时间（秒）", edTotal:"地鼠总数（个）",edInterval:"出现频率（ms/批）", edUpTime:"停留时间（ms）", edConcurrent:"同时出现数（只）",edHoles:"洞口数量（9-16）",edMoleSize:"地鼠大小（%）", edBgType:"背景类型", edBgTheme:"主题背景（组）", edBgImage:"上传背景图片",saveCfg:"保存设置", loadDefault:"载入该关默认", createCustom:"创建新关卡（自由模式）",level:"关卡", time:"时间", hits:"命中", miss:"漏打", rate:"命中率", medals:"勋章",footer:"点击地鼠获得分数。按 ESC 打开/关闭菜单。",modeLabel:"模式",honors:["园林学徒","园林标兵","园林卫士","园林皇家队长"],
+    // NEW i18n string
+    edEnableGoodMice:"启用好老鼠 (扣分)"
+  },
+  en:{title:"Whack-a-Mole · Protect the Farmland",welcomeTip:"Welcome! Pick a mode and language to begin.",startChallenge:"Start Challenge", startFree:"Enter Free Mode",language:"Language", menu:"Menu",challenge:"Challenge Mode", free:"Free Mode",challengeDesc:"Play levels 1→20 in order; beat a level to unlock the next. After level 20, receive a title based on total medals.",freeDesc:"Play any level freely (including your custom levels).",tabPlay:"Play/Levels", tabEditor:"Editor", tabLang:"Language",closeContinue:"Close (Resume)",currentMode:"Current Mode", selectLevel:"Select Level",startSelected:"Start Selected Level", restartCurr:"Restart Current",pauseNote:"Note: The game pauses while the menu is open and resumes when closed. Press ESC to toggle.",edSelect:"Select Level (Edit)", edDuration:"Duration (sec)", edTotal:"Total moles",edInterval:"Spawn interval (ms/batch)", edUpTime:"Mole up-time (ms)", edConcurrent:"Concurrent moles",edHoles:"Hole count (9–16)",edMoleSize:"Mole size (%)", edBgType:"Background Type", edBgTheme:"Theme Group", edBgImage:"Upload Background Image",saveCfg:"Save Settings", loadDefault:"Load Default", createCustom:"Create New Level (Free Mode)",level:"Level", time:"Time", hits:"Hits", miss:"Misses", rate:"Hit Rate", medals:"Medals",footer:"Click popping moles to score. Press ESC to open/close the menu.",modeLabel:"Mode",honors:["Apprentice","Model Player","Guardian","Royal Captain"],
+    // NEW i18n string
+    edEnableGoodMice:"Enable 'Good' Mice (Penalty)"
+  }
 };
 
 const storeKey='wam_senior_store_v2';
@@ -440,7 +481,10 @@ function saveStore(obj){ try{ localStorage.setItem(storeKey, JSON.stringify(obj)
 
 /* ========= Game State ========= */
 const LEVEL_COUNT=20; let CURRENT_HOLES=9;
-let state={lang:'zh',mode:'challenge',currentLevel:1,unlockedMax:1,medals:Array(LEVEL_COUNT).fill(0),levelConfigs:[],customLevels:[],running:false,paused:false,remainingTime:60,spawnCount:0,hits:0,activeMoles:new Set(),soundOn:true,levelTimer:null,spawnTimer:null};
+let state={lang:'zh',mode:'challenge',currentLevel:1,unlockedMax:1,medals:Array(LEVEL_COUNT).fill(0),levelConfigs:[],customLevels:[],running:false,paused:false,remainingTime:60,spawnCount:0,
+  // NEW state properties
+  spawnedGoodMice: 0, // Count "good" mice to adjust score
+  hits:0,activeMoles:new Set(),soundOn:true,levelTimer:null,spawnTimer:null};
 
 /* ========= Level Config ========= */
 function defaultMoleScaleForLevel(idx){ const min=0.75, max=1.0; return max - (idx-1)*((max-min)/(LEVEL_COUNT-1)); }
@@ -448,7 +492,8 @@ function defaultConfigForLevel(idx){
   const duration=60, totalMoles=25+idx*3, spawnInterval=Math.max(500,1200-idx*30), upTime=Math.max(600,1400-idx*40);
   let concurrent=1; if(idx>=11){ concurrent=Math.min(4,1+Math.floor((idx-11)/3)); }
   const moleScale=defaultMoleScaleForLevel(idx);
-  return{duration,totalMoles,spawnInterval,upTime,concurrent,moleScale,holes:9,bg:{type:'theme'}};
+  // NEW: Add enableGoodMice to default config
+  return{duration,totalMoles,spawnInterval,upTime,concurrent,moleScale,holes:9,bg:{type:'theme'}, enableGoodMice: false};
 }
 for(let i=1;i<=LEVEL_COUNT;i++){state.levelConfigs.push(defaultConfigForLevel(i));}
 
@@ -462,6 +507,19 @@ for(let i=1;i<=LEVEL_COUNT;i++){state.levelConfigs.push(defaultConfigForLevel(i)
   if(Array.isArray(s.levelConfigs) && s.levelConfigs.length===LEVEL_COUNT) state.levelConfigs = s.levelConfigs;
   if(Array.isArray(s.customLevels)) state.customLevels = s.customLevels;
   if(typeof s.soundOn==='boolean') state.soundOn = s.soundOn;
+  
+  // NEW: Ensure restored configs have the new property (for old saves)
+  state.levelConfigs.forEach(cfg => {
+    if (typeof cfg.enableGoodMice === 'undefined') {
+      cfg.enableGoodMice = false;
+    }
+  });
+  state.customLevels.forEach(lvl => {
+    if (lvl.config && typeof lvl.config.enableGoodMice === 'undefined') {
+      lvl.config.enableGoodMice = false;
+    }
+  });
+
 })();
 function persist(){ saveStore({lang:state.lang, mode:state.mode, unlockedMax:state.unlockedMax, medals:state.medals, levelConfigs:state.levelConfigs, customLevels:state.customLevels, soundOn:state.soundOn}); }
 
@@ -495,7 +553,23 @@ function analyzeImageBrightness(src){
 /* ========= Board & HUD ========= */
 const board=document.getElementById('board');
 
-function updateHUD(){ document.getElementById('hudLevel').textContent = (typeof state.currentLevel==='number')? state.currentLevel : state.currentLevel; document.getElementById('hudTime').textContent = (state.lang==='zh'? '进度' : 'Progress') + ': ' + state.hits + '/' + ((state.effectiveCfg||getLevelConfig(state.currentLevel)||{}).totalMoles||0); document.getElementById('hudHit').textContent=state.hits; document.getElementById('hudMiss').textContent=Math.max(0,state.spawnCount-state.hits); let rate=state.spawnCount?Math.round((state.hits/state.spawnCount)*100):0; document.getElementById('hudRate').textContent=rate+'%'; document.getElementById('hudMedals').textContent=medalByRate(rate); }
+function updateHUD(){ 
+  document.getElementById('hudLevel').textContent = (typeof state.currentLevel==='number')? state.currentLevel : state.currentLevel; 
+  document.getElementById('hudTime').textContent = (state.lang==='zh'? '进度' : 'Progress') + ': ' + state.hits + '/' + ((state.effectiveCfg||getLevelConfig(state.currentLevel)||{}).totalMoles||0); 
+  document.getElementById('hudHit').textContent=state.hits; 
+  
+  // NEW: Calculate misses based only on "bad" mice
+  const spawnedBaddies = state.spawnCount - state.spawnedGoodMice;
+  const hudMiss = Math.max(0, spawnedBaddies - state.hits);
+  document.getElementById('hudMiss').textContent = hudMiss;
+  
+  // NEW: Calculate rate based only on "bad" mice
+  let rate = spawnedBaddies ? Math.round((state.hits / spawnedBaddies) * 100) : 0;
+  if (state.hits < 0) rate = 0; // Don't show negative rate
+  document.getElementById('hudRate').textContent=rate+'%'; 
+  
+  document.getElementById('hudMedals').textContent=medalByRate(rate); 
+}
 function medalByRate(r){ if(r>=80)return 3; if(r>=60)return 2; if(r>=40)return 1; return 0; }
 
 /* ========= Level helpers ========= */
@@ -562,7 +636,7 @@ board.innerHTML='';
 
 // Hi-Vis mole SVG with thick outlines and white eyes for clear separation
 function hiVisMoleSVG(){
-  return `<svg class="mole-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/200/svg" aria-hidden="true">
+  return `<svg class="mole-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- body -->
     <ellipse class="stroke" cx="100" cy="124" rx="70" ry="68" fill="#d7925b"/>
     <!-- belly -->
@@ -618,7 +692,8 @@ function safeHide(i,m,tk,hit){
   if(!state.activeMoles.has(i)) return;
   state.activeMoles.delete(i);
   m.classList.remove('show');
-  if(hit) beep();
+  m.classList.remove('good'); // NEW: Clean up .good class
+  // if(hit) beep(); // MOVED: Beep is now handled by hitMole
   updateHUD();
   checkAutoEnd();
 }
@@ -666,6 +741,8 @@ function sanitizeLevelConfig(levelId, cfg){
   s.spawnInterval = Math.max(200, (s.spawnInterval|0));
   s.upTime = Math.max(250, (s.upTime|0));
   if(!Number.isFinite(+s.moleScale)) s.moleScale = 1.0;
+  // NEW: Sanitize goodMice
+  s.enableGoodMice = !!s.enableGoodMice;
   return s;
 }
 
@@ -683,7 +760,9 @@ let selectedLevel = 1;
 function startLevel(levelId){
   state.currentLevel=levelId; applyBackgroundByLevel(levelId);
   const rawCfg=getLevelConfig(levelId); if(!rawCfg) return; const cfg=sanitizeLevelConfig(levelId, rawCfg); state.effectiveCfg=cfg; CURRENT_HOLES=cfg.holes; if(typeof buildBoard==='function'){ buildBoard(CURRENT_HOLES); } verifyBoardHoles(CURRENT_HOLES); state.holeToken=Array(CURRENT_HOLES).fill(0); state.lastHole=-1; state.recentHoles=[];
-/* remainingTime removed */ state.spawnCount=0; state.hits=0; state.activeMoles.clear();
+  /* remainingTime removed */ state.spawnCount=0; state.hits=0; 
+  state.spawnedGoodMice = 0; // NEW: Reset good mice count
+  state.activeMoles.clear();
   state.running=true; state.paused=false; setMoleScale(cfg.moleScale || 1.0); updateHUD();
   clearInterval(state.levelTimer); clearInterval(state.spawnTimer);
 
@@ -724,6 +803,18 @@ function spawnAt(i){
 
   state.activeMoles.add(i);
   state.spawnCount++;
+
+  // NEW: Decide if it's a "good" mouse
+  const cfg = state.effectiveCfg || {};
+  const enableGoodMice = cfg.enableGoodMice || false;
+  let isGood = false;
+  if (enableGoodMice && Math.random() < 0.2) { // 20% chance
+    isGood = true;
+    state.spawnedGoodMice++;
+  }
+  m.classList.toggle('good', isGood);
+  m.dataset.isGood = isGood; // Store state
+
   m.classList.add('show');
   updateHUD();
 
@@ -735,13 +826,40 @@ function spawnAt(i){
 
   state.lastHole = i;
 }
-function hideMole(i,m,hit){ if(!state.activeMoles.has(i)) return; state.activeMoles.delete(i); m.classList.remove('show'); if(hit) beep(); updateHUD(); }
-function hitMole(i,m){ if(!state.running||state.paused) return; if(!state.activeMoles.has(i)) return; state.hits++; hideMole(i,m,true); }
+function hideMole(i,m,hit){ 
+  if(!state.activeMoles.has(i)) return; 
+  state.activeMoles.delete(i); 
+  m.classList.remove('show');
+  m.classList.remove('good'); // NEW: Clean up .good class
+  // if(hit) beep(); // MOVED: Beep is now handled by hitMole
+  updateHUD(); 
+}
+function hitMole(i,m){ 
+  if(!state.running||state.paused) return; 
+  if(!state.activeMoles.has(i)) return; 
+  
+  // NEW: Good mouse logic
+  const isGood = m.classList.contains('good');
+  if (isGood) {
+    state.hits = Math.max(0, state.hits - 5); // Deduct 5 points
+    beep(true); // Play error sound
+  } else {
+    state.hits++; // Add 1 point
+    beep(false); // Play normal sound
+  }
+  
+  hideMole(i,m, !isGood); // Hide the mole
+}
 
 function endLevel(){
   clearInterval(state.levelTimer); clearInterval(state.spawnTimer);
   state.running=false; state.paused=false;
-  let rate=state.spawnCount?Math.round((state.hits/state.spawnCount)*100):0;
+  
+  // NEW: Calculate rate based on "bad" mice
+  const spawnedBaddies = state.spawnCount - state.spawnedGoodMice;
+  let rate = spawnedBaddies ? Math.round((state.hits / spawnedBaddies) * 100) : 0;
+  if (state.hits < 0) rate = 0; // Don't allow negative rates
+  
   const earned = medalByRate(rate);
   let prevBest = 0;
 
@@ -822,7 +940,11 @@ function loadEdFields(id){
   document.getElementById('edTotal').value=cfg.totalMoles;
   document.getElementById('edInterval').value=cfg.spawnInterval;
   document.getElementById('edUpTime').value=cfg.upTime;
-  document.getElementById('edConcurrent').value=cfg.concurrent; if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;} if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;}
+  document.getElementById('edConcurrent').value=cfg.concurrent; 
+  if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;} 
+  
+  // NEW: Load "good mouse" setting
+  if(document.getElementById('edEnableGoodMice')){document.getElementById('edEnableGoodMice').checked = !!cfg.enableGoodMice;}
 
 // -- Editor: delete custom level (slim) --
 const delBtn = document.getElementById('btnDeleteCustom');
@@ -881,7 +1003,18 @@ document.getElementById('edBgType').addEventListener('change',(e)=>{ const v=e.t
 
 document.getElementById('btnSaveCfg').onclick=()=>{
   const rawId = edLevel.value; const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
-  const cfg = { duration:+document.getElementById('edDuration').value, totalMoles:+document.getElementById('edTotal').value, spawnInterval:+document.getElementById('edInterval').value, upTime:+document.getElementById('edUpTime').value, concurrent:+document.getElementById('edConcurrent').value, holes:+(document.getElementById('edHoles')?document.getElementById('edHoles').value:9), moleScale:+document.getElementById('edMoleScale').value/100, bg:{} };
+  // NEW: Add enableGoodMice to saved config
+  const cfg = { 
+    duration:+document.getElementById('edDuration').value, 
+    totalMoles:+document.getElementById('edTotal').value, 
+    spawnInterval:+document.getElementById('edInterval').value, 
+    upTime:+document.getElementById('edUpTime').value, 
+    concurrent:+document.getElementById('edConcurrent').value, 
+    holes:+(document.getElementById('edHoles')?document.getElementById('edHoles').value:9), 
+    moleScale:+document.getElementById('edMoleScale').value/100, 
+    enableGoodMice: document.getElementById('edEnableGoodMice').checked, // Save new setting
+    bg:{} 
+  };
   const bgType=document.getElementById('edBgType').value;
   if(bgType==='theme'){ cfg.bg={type:'theme', themeGroup:Number(document.getElementById('edBgTheme').value)}; applySave(); }
   else{ const input=document.getElementById('edBgImage'); const f=input.files&&input.files[0];
@@ -912,8 +1045,38 @@ const AudioAPI = { ctx:null, unlocked:false };
 function ensureAudioUnlocked(){ try{ if(!AudioAPI.ctx){ AudioAPI.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if(AudioAPI.ctx.state==='suspended'){ AudioAPI.ctx.resume(); } AudioAPI.unlocked = true; }catch{} }
 function unlockHandler(){ ensureAudioUnlocked(); window.removeEventListener('pointerdown', unlockHandler); window.removeEventListener('keydown', unlockHandler); }
 window.addEventListener('pointerdown', unlockHandler); window.addEventListener('keydown', unlockHandler);
-function beep(){ if(!state.soundOn) return; ensureAudioUnlocked(); if(!AudioAPI.ctx) return; const o=AudioAPI.ctx.createOscillator(); const g=AudioAPI.ctx.createGain(); o.type='square'; o.frequency.value=700; g.gain.setValueAtTime(0.0001, AudioAPI.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.12, AudioAPI.ctx.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001, AudioAPI.ctx.currentTime+0.12); o.connect(g).connect(AudioAPI.ctx.destination); o.start(); o.stop(AudioAPI.ctx.currentTime+0.14); }
-document.getElementById('btnSound').onclick=()=>{ state.soundOn=!state.soundOn; persist(); document.getElementById('btnSound').textContent=state.soundOn?'🔊':'🔈'; if(state.soundOn){ ensureAudioUnlocked(); beep(); } };
+
+// NEW: Updated beep function to handle "good" and "bad" hits
+function beep(isError = false){ 
+  if(!state.soundOn) return; 
+  ensureAudioUnlocked(); 
+  if(!AudioAPI.ctx) return; 
+  const o=AudioAPI.ctx.createOscillator(); 
+  const g=AudioAPI.ctx.createGain(); 
+  
+  if (isError) {
+    // Error sound (hit "good" mouse)
+    o.type='sawtooth'; 
+    o.frequency.value=200; 
+    g.gain.setValueAtTime(0.0001, AudioAPI.ctx.currentTime); 
+    g.gain.exponentialRampToValueAtTime(0.15, AudioAPI.ctx.currentTime+0.02); 
+    g.gain.exponentialRampToValueAtTime(0.0001, AudioAPI.ctx.currentTime+0.2); 
+    o.connect(g).connect(AudioAPI.ctx.destination); 
+    o.start(); 
+    o.stop(AudioAPI.ctx.currentTime+0.22);
+  } else {
+    // Normal hit sound
+    o.type='square'; 
+    o.frequency.value=700; 
+    g.gain.setValueAtTime(0.0001, AudioAPI.ctx.currentTime); 
+    g.gain.exponentialRampToValueAtTime(0.12, AudioAPI.ctx.currentTime+0.02); 
+    g.gain.exponentialRampToValueAtTime(0.0001, AudioAPI.ctx.currentTime+0.12); 
+    o.connect(g).connect(AudioAPI.ctx.destination); 
+    o.start(); 
+    o.stop(AudioAPI.ctx.currentTime+0.14); 
+  }
+}
+document.getElementById('btnSound').onclick=()=>{ state.soundOn=!state.soundOn; persist(); document.getElementById('btnSound').textContent=state.soundOn?'🔊':'🔈'; if(state.soundOn){ ensureAudioUnlocked(); beep(false); } };
 
 /* ====== Welcome ====== */
 const welcome=document.getElementById('welcome'); const welcomeLang=document.getElementById('welcomeLang'); welcomeLang.value=state.lang;
@@ -942,13 +1105,20 @@ if(btnBackMenu){
 function openEndDialog(){
   if(!endDialog) return;
   const cfg = state.effectiveCfg || (typeof sanitizeLevelConfig==='function' ? sanitizeLevelConfig(state.currentLevel, getLevelConfig(state.currentLevel)||{}) : (getLevelConfig(state.currentLevel)||{}));
-  const rate = state.spawnCount? Math.round((state.hits/state.spawnCount)*100) : 0;
+  
+  // NEW: Calculate rate based on "bad" mice
+  const spawnedBaddies = state.spawnCount - state.spawnedGoodMice;
+  let rate = spawnedBaddies ? Math.round((state.hits / spawnedBaddies) * 100) : 0;
+  if (state.hits < 0) rate = 0; // Don't allow negative rates
+  
   const earned = (state.lastResult && typeof state.lastResult.earned==='number') ? state.lastResult.earned : medalByRate(rate);
   const bestBefore = (state.lastResult && typeof state.lastResult.prevBest==='number') ? state.lastResult.prevBest : 0;
 
+  // NEW: Show misses based on "bad" mice
+  const misses = Math.max(0, spawnedBaddies - state.hits);
   const baseStats = (state.lang==='zh' ? 
-    `本关统计：击中 ${state.hits}/${state.spawnCount}（命中率 ${rate}%）` : 
-    `Stats: ${state.hits}/${state.spawnCount} hit (accuracy ${rate}%)`);
+    `本关统计：击中 ${state.hits} (目标 ${spawnedBaddies}) | 漏打 ${misses} | 命中率 ${rate}%` : 
+    `Stats: ${state.hits} hits (of ${spawnedBaddies}) | ${misses} misses | accuracy ${rate}%`);
 
   // medals row
   const medalHTML = renderMedals(earned);
