@@ -381,17 +381,27 @@ body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !im
         <div class="field"><label data-i18n="edUpTime">停留时间（ms）</label><input id="edUpTime" type="number" min="300" max="3000" step="50"></div>
         <div class="field">
           <label data-i18n="edConcurrent">同时出现数（只）</label>
-          <input id="edConcurrent" type="number" min="1" max="4" step="1">
+          <input id="edConcurrent" type="number" min="1" max="16" step="1">
         </div>
         <div class="field">
           <label data-i18n="edHoles">洞口数量（9-16）</label>
           <input id="edHoles" type="number" min="9" max="16" step="1">
         </div>
-        <!-- NEW: "Good Mouse" Checkbox -->
+        <!-- "Good Mouse" Checkbox -->
         <div class="field checkbox-field">
           <input id="edEnableGoodMice" type="checkbox">
           <label for="edEnableGoodMice" data-i18n="edEnableGoodMice">启用好老鼠 (扣分)</label>
         </div>
+        
+        <!-- NEW: "Good Mouse" Probability Slider -->
+        <div class="field" id="edGoodMiceRateRow" style="display: none;"> <!-- 默认隐藏 -->
+          <label data-i18n="edGoodMiceRate">好老鼠出现概率</label>
+          <div class="preview-wrap" style="gap: 16px;">
+            <input id="edGoodMiceRate" type="range" min="0" max="99" step="1" value="20" style="width:200px">
+            <span id="edGoodMiceRateVal" class="value-pill">20%</span>
+          </div>
+        </div>
+
 
         <div class="field">
           <label data-i18n="edMoleSize">地鼠大小（%）</label>
@@ -467,11 +477,13 @@ body.ui-dark .pill.active{background:#2b3d5e !important;border-color:#4a6aa0 !im
 const I18N={
   zh:{title:"农田打地鼠 · 保护农地",welcomeTip:"欢迎！请选择模式和语言，开始游戏。",startChallenge:"开始挑战", startFree:"进入自由模式",language:"语言", menu:"菜单",challenge:"挑战模式", free:"自由模式",challengeDesc:"依次闯关（1→20），通关后解锁下一关。通关 20 关后根据累计勋章授予荣誉称号。",freeDesc:"任意选择任何关卡进行游玩（包括你自定义的新关卡）。",tabPlay:"关卡/开始", tabEditor:"编辑器", tabLang:"语言",closeContinue:"关闭（继续）",currentMode:"当前模式", selectLevel:"选择关卡",startSelected:"开始所选关卡", restartCurr:"重新开始当前关",pauseNote:"提示：打开菜单时游戏会暂停，关闭菜单后继续。按 ESC 可开关菜单。",edSelect:"选择关卡（编辑）", edDuration:"每关时间（秒）", edTotal:"地鼠总数（个）",edInterval:"出现频率（ms/批）", edUpTime:"停留时间（ms）", edConcurrent:"同时出现数（只）",edHoles:"洞口数量（9-16）",edMoleSize:"地鼠大小（%）", edBgType:"背景类型", edBgTheme:"主题背景（组）", edBgImage:"上传背景图片",saveCfg:"保存设置", loadDefault:"载入该关默认", createCustom:"创建新关卡（自由模式）",level:"关卡", time:"时间", hits:"命中", miss:"漏打", rate:"命中率", medals:"勋章",footer:"点击地鼠获得分数。按 ESC 打开/关闭菜单。",modeLabel:"模式",honors:["园林学徒","园林标兵","园林卫士","园林皇家队长"],
     // NEW i18n string
-    edEnableGoodMice:"启用好老鼠 (扣分)"
+    edEnableGoodMice:"启用好老鼠 (扣分)",
+    edGoodMiceRate:"好老鼠出现概率" // NEW
   },
   en:{title:"Whack-a-Mole · Protect the Farmland",welcomeTip:"Welcome! Pick a mode and language to begin.",startChallenge:"Start Challenge", startFree:"Enter Free Mode",language:"Language", menu:"Menu",challenge:"Challenge Mode", free:"Free Mode",challengeDesc:"Play levels 1→20 in order; beat a level to unlock the next. After level 20, receive a title based on total medals.",freeDesc:"Play any level freely (including your custom levels).",tabPlay:"Play/Levels", tabEditor:"Editor", tabLang:"Language",closeContinue:"Close (Resume)",currentMode:"Current Mode", selectLevel:"Select Level",startSelected:"Start Selected Level", restartCurr:"Restart Current",pauseNote:"Note: The game pauses while the menu is open and resumes when closed. Press ESC to toggle.",edSelect:"Select Level (Edit)", edDuration:"Duration (sec)", edTotal:"Total moles",edInterval:"Spawn interval (ms/batch)", edUpTime:"Mole up-time (ms)", edConcurrent:"Concurrent moles",edHoles:"Hole count (9–16)",edMoleSize:"Mole size (%)", edBgType:"Background Type", edBgTheme:"Theme Group", edBgImage:"Upload Background Image",saveCfg:"Save Settings", loadDefault:"Load Default", createCustom:"Create New Level (Free Mode)",level:"Level", time:"Time", hits:"Hits", miss:"Misses", rate:"Hit Rate", medals:"Medals",footer:"Click popping moles to score. Press ESC to open/close the menu.",modeLabel:"Mode",honors:["Apprentice","Model Player","Guardian","Royal Captain"],
     // NEW i18n string
-    edEnableGoodMice:"Enable 'Good' Mice (Penalty)"
+    edEnableGoodMice:"Enable 'Good' Mice (Penalty)",
+    edGoodMiceRate:"'Good' Mice Chance" // NEW
   }
 };
 
@@ -492,8 +504,8 @@ function defaultConfigForLevel(idx){
   const duration=60, totalMoles=25+idx*3, spawnInterval=Math.max(500,1200-idx*30), upTime=Math.max(600,1400-idx*40);
   let concurrent=1; if(idx>=11){ concurrent=Math.min(4,1+Math.floor((idx-11)/3)); }
   const moleScale=defaultMoleScaleForLevel(idx);
-  // NEW: Add enableGoodMice to default config
-  return{duration,totalMoles,spawnInterval,upTime,concurrent,moleScale,holes:9,bg:{type:'theme'}, enableGoodMice: false};
+  // NEW: Add enableGoodMice and goodMiceRate to default config
+  return{duration,totalMoles,spawnInterval,upTime,concurrent,moleScale,holes:9,bg:{type:'theme'}, enableGoodMice: false, goodMiceRate: 0.2};
 }
 for(let i=1;i<=LEVEL_COUNT;i++){state.levelConfigs.push(defaultConfigForLevel(i));}
 
@@ -513,10 +525,16 @@ for(let i=1;i<=LEVEL_COUNT;i++){state.levelConfigs.push(defaultConfigForLevel(i)
     if (typeof cfg.enableGoodMice === 'undefined') {
       cfg.enableGoodMice = false;
     }
+    if (typeof cfg.goodMiceRate === 'undefined') { // NEW
+      cfg.goodMiceRate = 0.2;
+    }
   });
   state.customLevels.forEach(lvl => {
     if (lvl.config && typeof lvl.config.enableGoodMice === 'undefined') {
       lvl.config.enableGoodMice = false;
+    }
+    if (lvl.config && typeof lvl.config.goodMiceRate === 'undefined') { // NEW
+      lvl.config.goodMiceRate = 0.2;
     }
   });
 
@@ -605,7 +623,9 @@ function cuteMoleSVG(){
   </svg>`;
 }
 
-board.innerHTML='';
+// FIX: Wrap this block in a function to prevent auto-execution
+function buildCuteBoard() {
+  board.innerHTML='';
 
   // Keep grid semantics; column count switches at >9
   const cols = (CURRENT_HOLES<=9) ? 3 : 4;
@@ -629,6 +649,7 @@ board.innerHTML='';
     hole.appendChild(mole);
     board.appendChild(hole);
   }
+}
 
 
 
@@ -726,23 +747,26 @@ function verifyBoardHoles(n){
 }
 
 
-// ---- Sanitize level config (keeps early levels at concurrent=1) ----
+// ---- Sanitize level config ----
 function sanitizeLevelConfig(levelId, cfg){
   const s = Object.assign({}, cfg||{});
   // Holes
   const holes = ensureHoleCount(levelId, cfg);
   s.holes = holes;
-  // Concurrent: level 1..10 force 1 (original design); 11..20 clamp 1..4
+  // Concurrent: max is hole count
   const rawConc = Number.isFinite(+s.concurrent) ? +s.concurrent : 1;
-  const maxConc = Math.min(holes, (levelId<=10 ? 1 : 4));
+  const maxConc = holes;
   s.concurrent = Math.max(1, Math.min(maxConc, rawConc));
   // Other guards
   s.totalMoles = Math.max(1, (s.totalMoles|0));
   s.spawnInterval = Math.max(200, (s.spawnInterval|0));
   s.upTime = Math.max(250, (s.upTime|0));
   if(!Number.isFinite(+s.moleScale)) s.moleScale = 1.0;
-  // NEW: Sanitize goodMice
+  // NEW: Sanitize goodMice settings
   s.enableGoodMice = !!s.enableGoodMice;
+  const rate = Number(s.goodMiceRate);
+  s.goodMiceRate = (Number.isFinite(rate) && rate >= 0 && rate <= 1) ? rate : 0.2; // Clamp rate
+  
   return s;
 }
 
@@ -807,8 +831,10 @@ function spawnAt(i){
   // NEW: Decide if it's a "good" mouse
   const cfg = state.effectiveCfg || {};
   const enableGoodMice = cfg.enableGoodMice || false;
+  const goodMiceRate = (typeof cfg.goodMiceRate === 'number') ? cfg.goodMiceRate : 0.2; // Use rate from config
+
   let isGood = false;
-  if (enableGoodMice && Math.random() < 0.2) { // 20% chance
+  if (enableGoodMice && Math.random() < goodMiceRate) { // Use variable rate
     isGood = true;
     state.spawnedGoodMice++;
   }
@@ -943,8 +969,28 @@ function loadEdFields(id){
   document.getElementById('edConcurrent').value=cfg.concurrent; 
   if(document.getElementById('edHoles')){document.getElementById('edHoles').value=cfg.holes||9;} 
   
-  // NEW: Load "good mouse" setting
-  if(document.getElementById('edEnableGoodMice')){document.getElementById('edEnableGoodMice').checked = !!cfg.enableGoodMice;}
+  // NEW: Load "good mouse" settings
+  const enableGoodMiceCheckbox = document.getElementById('edEnableGoodMice');
+  const goodMiceRateRow = document.getElementById('edGoodMiceRateRow');
+  const goodMiceRateSlider = document.getElementById('edGoodMiceRate');
+  const goodMiceRateVal = document.getElementById('edGoodMiceRateVal');
+
+  const isEnabled = !!cfg.enableGoodMice;
+  const rate = (typeof cfg.goodMiceRate === 'number') ? cfg.goodMiceRate : 0.2;
+  const ratePercent = Math.round(rate * 100);
+
+  if(enableGoodMiceCheckbox) {
+    enableGoodMiceCheckbox.checked = isEnabled;
+  }
+  if(goodMiceRateRow) { // Show/hide slider row
+    goodMiceRateRow.style.display = isEnabled ? '' : 'none';
+  }
+  if(goodMiceRateSlider) {
+    goodMiceRateSlider.value = ratePercent;
+  }
+  if(goodMiceRateVal) {
+    goodMiceRateVal.textContent = ratePercent + '%';
+  }
 
 // -- Editor: delete custom level (slim) --
 const delBtn = document.getElementById('btnDeleteCustom');
@@ -975,9 +1021,9 @@ function clampInt(v, min, max, defv){ v = Number(v); if(!Number.isFinite(v)) ret
 function normalizeEditorForm(){
   const holes = clampInt(document.getElementById('edHoles').value, 9, 16, 9);
   document.getElementById('edHoles').value = holes;
-  let maxConc = Math.min(holes, 4);
+  let maxConc = holes;
   const rawId = edLevel.value; const id = isNaN(Number(rawId))? rawId : Number(rawId);
-  if(typeof id==='number' && id<=10) maxConc = 1;
+  // if(typeof id==='number' && id<=10) maxConc = 1; // <-- 移除了这个限制
   document.getElementById('edConcurrent').max = String(maxConc);
   let conc = clampInt(document.getElementById('edConcurrent').value, 1, maxConc, 1);
   document.getElementById('edConcurrent').value = conc;
@@ -998,12 +1044,32 @@ function normalizeEditorForm(){
   document.getElementById('edBgTheme').value = String(bg.themeGroup|| groupForLevel(typeof id==='number'? id : 1));
   normalizeEditorForm();
 }
+
+// NEW: Listener for Good Mice Checkbox to show/hide slider
+const enableGoodMiceCheckbox = document.getElementById('edEnableGoodMice');
+const goodMiceRateRow = document.getElementById('edGoodMiceRateRow');
+if(enableGoodMiceCheckbox && goodMiceRateRow) {
+  enableGoodMiceCheckbox.addEventListener('change', (e) => {
+    goodMiceRateRow.style.display = e.target.checked ? '' : 'none';
+  });
+}
+
+// NEW: Listener for Good Mice Rate Slider
+const goodMiceRateSlider = document.getElementById('edGoodMiceRate');
+const goodMiceRateVal = document.getElementById('edGoodMiceRateVal');
+if(goodMiceRateSlider && goodMiceRateVal) {
+  goodMiceRateSlider.addEventListener('input', (e) => {
+    const val = e.target.value;
+    goodMiceRateVal.textContent = val + '%';
+  });
+}
+
 document.getElementById('edMoleScale').addEventListener('input',(e)=>{ const val=Number(e.target.value); document.getElementById('edMoleScaleVal').textContent = val+'%'; document.getElementById('previewBox').style.setProperty('--mole-scale', String(val/100)); });
 document.getElementById('edBgType').addEventListener('change',(e)=>{ const v=e.target.value; document.getElementById('bgThemeRow').style.display = v==='theme' ? '' : 'none'; document.getElementById('bgImageRow').style.display = v==='image' ? '' : 'none'; });
 
 document.getElementById('btnSaveCfg').onclick=()=>{
   const rawId = edLevel.value; const id = isNaN(Number(rawId)) ? rawId : Number(rawId);
-  // NEW: Add enableGoodMice to saved config
+  // NEW: Add enableGoodMice and goodMiceRate to saved config
   const cfg = { 
     duration:+document.getElementById('edDuration').value, 
     totalMoles:+document.getElementById('edTotal').value, 
@@ -1013,6 +1079,7 @@ document.getElementById('btnSaveCfg').onclick=()=>{
     holes:+(document.getElementById('edHoles')?document.getElementById('edHoles').value:9), 
     moleScale:+document.getElementById('edMoleScale').value/100, 
     enableGoodMice: document.getElementById('edEnableGoodMice').checked, // Save new setting
+    goodMiceRate: +document.getElementById('edGoodMiceRate').value / 100, // NEW: Save rate
     bg:{} 
   };
   const bgType=document.getElementById('edBgType').value;
